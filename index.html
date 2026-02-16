@@ -6,6 +6,8 @@
     <title>DMTP - Drone Flight Worthiness Assessment</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Import Three.js untuk 3D Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -49,9 +51,11 @@
     <style>
         body { background-color: #020617; color: white; overflow-x: hidden; }
         
+        /* Responsive Viewport Height */
         .viewport-container { 
             width: 100%; 
-            height: 500px; 
+            height: 50vh; 
+            min-height: 350px;
             background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
             border-radius: 1.5rem; 
             position: relative; 
@@ -60,11 +64,20 @@
             box-shadow: 0 0 40px rgba(59, 130, 246, 0.1);
             z-index: 10;
         }
-        
-        #drone-group { transition: transform 0.1s linear; }
-        .propeller { transform-origin: center; animation: spin 0.1s linear infinite; display: none; }
-        @keyframes spin { from { opacity: 0.3; } to { opacity: 0.9; } }
 
+        @media (min-width: 768px) {
+            .viewport-container {
+                height: 600px;
+            }
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            outline: none;
+        }
+        
         .status-badge {
             position: absolute; top: 1.5rem; left: 1.5rem; padding: 0.6rem 1.2rem;
             border-radius: 0.5rem; font-weight: 800; font-size: 0.75rem;
@@ -76,8 +89,6 @@
         .pass { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #86efac; }
         .fail { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #fca5a5; }
         
-        .grid-line { stroke: #1e293b; stroke-width: 1; }
-        
         .nav-link { position: relative; }
         .nav-link::after {
             content: ''; position: absolute; width: 0; height: 2px; bottom: -4px; left: 0;
@@ -86,7 +97,6 @@
         .nav-link:hover::after, .nav-link.active::after { width: 100%; }
         .nav-link.active { color: #60a5fa; }
 
-        /* Mobile Menu Animation */
         #mobile-menu {
             transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
             max-height: 0;
@@ -115,6 +125,58 @@
         .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* REVISED TOAST POPUP STYLES */
+        #result-toast {
+            position: fixed;
+            z-index: 100;
+            opacity: 0;
+            /* Bounce effect transition */
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none; /* Initially allow clicks through */
+            transform: translateY(20px) scale(0.9);
+        }
+        
+        /* Mobile Default: Top Center */
+        #result-toast {
+            top: 5rem; /* Below navbar */
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%) scale(0.9);
+        }
+        
+        #result-toast.show {
+            opacity: 1;
+            pointer-events: auto; /* Enable clicks when shown */
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+        
+        /* Mobile Hide State */
+        #result-toast.hide {
+            transform: translateX(-50%) translateY(-100%) scale(0.9);
+            opacity: 0;
+        }
+
+        /* Desktop Override: Bottom Right */
+        @media (min-width: 768px) {
+            #result-toast {
+                top: auto;
+                left: auto;
+                bottom: 2rem;
+                right: 2rem;
+                transform: translateY(150%) scale(0.9); /* Start from bottom */
+            }
+            
+            #result-toast.show {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+                pointer-events: auto;
+            }
+            
+            #result-toast.hide {
+                transform: translateY(150%) scale(0.9);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col relative selection:bg-blue-500 selection:text-white">
@@ -164,6 +226,27 @@
         </div>
     </nav>
 
+    <!-- NEW SYMMETRICAL RESULT TOAST -->
+    <div id="result-toast" class="flex flex-row items-center justify-center px-8 py-5 rounded-2xl border bg-slate-900/95 backdrop-blur-xl shadow-2xl min-w-[320px] max-w-sm gap-5 relative overflow-hidden group">
+        
+        <!-- Close Button (Absolute Top Right) -->
+        <button onclick="closeToast()" class="absolute top-2 right-2 text-slate-500 hover:text-white transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 z-20 cursor-pointer">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+
+        <!-- Centered Content Wrapper for Symmetry -->
+        <div class="flex items-center gap-4 relative z-10">
+            <!-- Icon -->
+            <div id="toast-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-lg border shadow-inner shrink-0 relative z-10 transition-transform duration-500"></div>
+            
+            <!-- Text -->
+            <h3 id="toast-title" class="text-xl font-bold uppercase font-oswald tracking-tight leading-none relative z-10"></h3>
+        </div>
+        
+        <!-- Decorative Glow (Optional) -->
+        <div id="toast-glow" class="absolute inset-0 opacity-20 blur-xl pointer-events-none z-0"></div>
+    </div>
+
     <main class="flex-grow relative">
         <!-- SECTION: HOME -->
         <section id="section-home" class="section-visible py-24 px-6 relative overflow-hidden">
@@ -173,12 +256,12 @@
                     System Ready v2.5
                 </div>
                 
-                <h2 class="text-5xl md:text-7xl font-bold mb-8 leading-tight tracking-tighter font-oswald animate-float">
+                <h2 class="text-4xl sm:text-5xl md:text-7xl font-bold mb-8 leading-tight tracking-tighter font-oswald animate-float">
                     ASESMEN KELAYAKAN <br/>
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">TERBANG DRONE</span>
                 </h2>
                 
-                <p class="text-slate-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+                <p class="text-slate-400 text-base md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-light">
                     Sistem pengujian statis berbasis IoT yang presisi untuk analisis kuantitatif performa drone sebelum penerbangan bebas.
                 </p>
                 
@@ -194,7 +277,7 @@
             </div>
             
             <!-- Feature Cards -->
-            <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-6 mt-24 px-4">
+            <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 px-4">
                 <div class="glass-card p-8 rounded-2xl group hover:border-blue-500/30 transition-colors">
                     <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                         <i class="fas fa-satellite-dish text-blue-400 text-2xl"></i>
@@ -222,17 +305,19 @@
         </section>
 
         <!-- SECTION: SIMULATION (DASHBOARD) -->
-        <section id="section-sim" class="section-hidden py-10 px-4 md:px-8 max-w-[1400px] mx-auto">
-            <!-- Header with Back Button -->
-            <div class="flex items-center justify-between mb-8">
-                <div class="text-right">
-                    <h2 class="text-2xl font-bold font-oswald uppercase tracking-tight">Dashboard Pengujian</h2>
-                    <p class="text-xs text-slate-500 font-mono">LIVE SIMULATION MODE</p>
-                </div>
+        <section id="section-sim" class="section-hidden py-6 md:py-10 px-4 md:px-8 max-w-[1400px] mx-auto">
+            <!-- Header Center Aligned -->
+            <div class="max-w-5xl mx-auto text-center mb-10">
+                <h2 class="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 leading-tight tracking-tighter font-oswald uppercase">
+                    Dashboard <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Pengujian</span>
+                </h2>
+                <p class="text-slate-400 text-xs md:text-sm tracking-[0.2em] uppercase font-bold">
+                    Live 3D Simulation Mode (Vertical Rig)
+                </p>
             </div>
 
-            <div class="grid lg:grid-cols-12 gap-6">
-                <!-- VIEWPORT 2D SIDE VIEW -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- VIEWPORT 3D -->
                 <div class="lg:col-span-8">
                     <div class="viewport-container shadow-2xl relative group">
                         <!-- Overlay Status -->
@@ -240,114 +325,77 @@
                             <i class="fas fa-microchip mr-2"></i> STATUS: <span id="status-label">ANALYZING</span>
                         </div>
 
-                        <!-- Technical Grid Overlay (Decorative) -->
-                        <div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px); background-size: 40px 40px;"></div>
+                        <!-- Technical Overlay (Decorative) -->
+                        <div class="absolute inset-0 pointer-events-none opacity-10" style="background-image: linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px); background-size: 40px 40px; z-index: 15;"></div>
 
-                        <svg width="100%" height="100%" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet" class="relative z-10">
-                            <!-- Grid will be injected here -->
-                            <g id="grid"></g>
-
-                            <!-- Rig Structure -->
-                            <rect x="385" y="50" width="30" height="400" fill="#334155" rx="4" filter="drop-shadow(2px 2px 4px rgba(0,0,0,0.5))" /> 
-                            <rect x="250" y="440" width="300" height="30" fill="#1e293b" rx="4" />
-                            
-                            <!-- Measurements -->
-                            <g stroke="#64748b" stroke-width="1" stroke-dasharray="2 2">
-                                <line x1="430" y1="100" x2="460" y2="100" /> <text x="470" y="105" fill="#64748b" font-size="10" font-family="monospace">MAX ALT</text>
-                                <line x1="430" y1="300" x2="460" y2="300" /> <text x="470" y="305" fill="#64748b" font-size="10" font-family="monospace">MID POINT</text>
-                            </g>
-
-                            <!-- LARGER DRONE GROUP (Side View) -->
-                            <g id="drone-group" transform="translate(400, 400)">
-                                <!-- Slider Mechanism -->
-                                <rect x="-25" y="-20" width="50" height="70" fill="#475569" rx="4" stroke="#1e293b" stroke-width="1" />
-                                
-                                <!-- Main Frame (Side Profile) -->
-                                <path d="M-120,-5 L120,-5 L130,10 L110,20 L-110,20 L-130,10 Z" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-                                
-                                <!-- Central Hub -->
-                                <rect x="-45" y="-25" width="90" height="35" fill="#1e293b" rx="6" stroke="#3b82f6" stroke-width="1" />
-                                <text x="0" y="-8" text-anchor="middle" fill="#3b82f6" font-size="8" font-weight="bold" font-family="Arial">ESP32</text>
-                                
-                                <!-- Motors -->
-                                <defs>
-                                    <linearGradient id="motorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" style="stop-color:#334155;stop-opacity:1" />
-                                        <stop offset="50%" style="stop-color:#475569;stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#334155;stop-opacity:1" />
-                                    </linearGradient>
-                                </defs>
-                                <rect x="-115" y="-15" width="22" height="25" fill="url(#motorGrad)" rx="2" />
-                                <rect x="93" y="-15" width="22" height="25" fill="url(#motorGrad)" rx="2" />
-                                
-                                <!-- Propellers -->
-                                <g class="propeller" id="prop-left">
-                                    <ellipse cx="-104" cy="-18" rx="70" ry="2" fill="#e2e8f0" fill-opacity="0.8" />
-                                </g>
-                                <g class="propeller" id="prop-right">
-                                    <ellipse cx="104" cy="-18" rx="70" ry="2" fill="#e2e8f0" fill-opacity="0.8" />
-                                </g>
-
-                                <!-- Status LED -->
-                                <circle cx="0" cy="-35" r="4" fill="#ef4444" id="status-led" class="transition-colors duration-300" />
-                            </g>
-                        </svg>
+                        <!-- 3D Canvas Container -->
+                        <div id="canvas-container"></div>
                     </div>
 
-                    <!-- CONTROLS - Added Z-Index and Relative positioning to ensure clickability -->
+                    <!-- CONTROLS -->
                     <div class="grid grid-cols-2 gap-4 mt-6 relative z-20">
-                        <button type="button" onclick="runTest('normal')" class="relative overflow-hidden bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest shadow-lg shadow-blue-500/20 group cursor-pointer">
-                            <span class="relative z-10 flex items-center gap-2"><i class="fas fa-play"></i> Uji Kelayakan</span>
+                        <button type="button" onclick="runTest('normal')" class="relative overflow-hidden bg-blue-600 hover:bg-blue-500 py-3 md:py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest shadow-lg shadow-blue-500/20 group cursor-pointer">
+                            <span class="relative z-10 flex items-center gap-2"><i class="fas fa-play"></i> <span class="hidden sm:inline">Uji</span> Kelayakan</span>
                             <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
                         </button>
-                        <button type="button" onclick="runTest('fail')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-500/50 hover:text-red-400 py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest group cursor-pointer">
-                            <i class="fas fa-bug group-hover:animate-bounce"></i> Simulasi Gagal
+                        <button type="button" onclick="runTest('fail')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-500/50 hover:text-red-400 py-3 md:py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest group cursor-pointer">
+                            <i class="fas fa-bug group-hover:animate-bounce"></i> Simulasi <span class="hidden sm:inline">Gagal</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- TELEMETRY -->
                 <div class="lg:col-span-4 space-y-4 flex flex-col h-full">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-blue-500">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Thrust</span>
-                                <i class="fas fa-tachometer-alt text-blue-500 text-xs"></i>
+                    <div class="grid grid-cols-3 gap-2 md:gap-4">
+                        <div class="glass-card p-3 md:p-4 rounded-2xl border-l-2 md:border-l-4 border-l-blue-500">
+                            <div class="flex flex-col justify-between items-start mb-1">
+                                <span class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Thrust</span>
                             </div>
                             <div class="flex items-baseline gap-1">
-                                <span id="txt-thrust" class="text-3xl font-bold tracking-tighter text-white">0</span>
-                                <span class="text-slate-500 text-[10px] font-mono">g</span>
+                                <span id="txt-thrust" class="text-lg md:text-2xl font-bold tracking-tighter text-white">0</span>
+                                <span class="text-slate-500 text-[8px] md:text-[10px] font-mono">g</span>
                             </div>
-                            <div class="w-full bg-slate-700/50 h-1 mt-2 rounded-full overflow-hidden">
+                            <div class="w-full bg-slate-700/50 h-1 mt-1 rounded-full overflow-hidden">
                                 <div id="bar-thrust" class="h-full bg-blue-500 w-0 transition-all duration-100"></div>
                             </div>
                         </div>
-                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-purple-500">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Vibration</span>
-                                <i class="fas fa-wave-square text-purple-500 text-xs"></i>
+                        <div class="glass-card p-3 md:p-4 rounded-2xl border-l-2 md:border-l-4 border-l-purple-500">
+                            <div class="flex flex-col justify-between items-start mb-1">
+                                <span class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Vibration</span>
                             </div>
                             <div class="flex items-baseline gap-1">
-                                <span id="txt-vib" class="text-3xl font-bold tracking-tighter text-white">0.0</span>
-                                <span class="text-slate-500 text-[10px] font-mono">RMS</span>
+                                <span id="txt-vib" class="text-lg md:text-2xl font-bold tracking-tighter text-white">0.0</span>
+                                <span class="text-slate-500 text-[8px] md:text-[10px] font-mono">RMS</span>
                             </div>
-                            <div class="w-full bg-slate-700/50 h-1 mt-2 rounded-full overflow-hidden">
+                            <div class="w-full bg-slate-700/50 h-1 mt-1 rounded-full overflow-hidden">
                                 <div id="bar-vib" class="h-full bg-purple-500 w-0 transition-all duration-100"></div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-3 md:p-4 rounded-2xl border-l-2 md:border-l-4 border-l-emerald-500">
+                            <div class="flex flex-col justify-between items-start mb-1">
+                                <span class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Stable</span>
+                            </div>
+                            <div class="flex items-baseline gap-1">
+                                <span id="txt-stab" class="text-lg md:text-2xl font-bold tracking-tighter text-white">0.0</span>
+                                <span class="text-slate-500 text-[8px] md:text-[10px] font-mono">deg</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 h-1 mt-1 rounded-full overflow-hidden">
+                                <div id="bar-stab" class="h-full bg-emerald-500 w-0 transition-all duration-100"></div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="glass-card p-5 rounded-2xl flex-grow flex flex-col">
-                        <h4 class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Real-time Telemetry</h4>
-                        <div class="flex-grow relative w-full h-full min-h-[180px]">
+                    <div class="glass-card p-4 md:p-5 rounded-2xl flex-grow flex flex-col min-h-[200px]">
+                        <h4 class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Real-time Telemetry Analysis</h4>
+                        <div class="flex-grow relative w-full h-64 md:h-auto min-h-[200px]">
                             <canvas id="telemetryChart"></canvas>
                         </div>
                     </div>
                     
-                    <div class="bg-black/40 backdrop-blur border border-slate-800 p-4 rounded-2xl h-40 font-mono text-[10px] text-blue-400/80 overflow-y-auto custom-scroll shadow-inner" id="log-container">
+                    <div class="bg-black/40 backdrop-blur border border-slate-800 p-4 rounded-2xl h-32 md:h-40 font-mono text-[10px] text-blue-400/80 overflow-y-auto custom-scroll shadow-inner" id="log-container">
                         <div class="border-b border-slate-800/50 pb-1 mb-1 text-slate-500">System Log:</div>
                         <div>> System initialized.</div>
-                        <div>> Waiting for test sequence...</div>
+                        <div>> Vertical Test Rig calibrated.</div>
                     </div>
                 </div>
             </div>
@@ -355,16 +403,18 @@
 
         <!-- SECTION: ABOUT -->
         <section id="section-about" class="section-hidden py-16 px-6 max-w-4xl mx-auto">
-            <!-- Back Button for About Page -->
-
-            <h2 class="text-4xl md:text-5xl font-bold mb-10 uppercase tracking-tight font-oswald">Mengenai <span class="text-blue-500">Proyek</span></h2>
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl md:text-6xl font-bold mb-8 leading-tight tracking-tighter font-oswald uppercase">
+                    Mengenai <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Proyek</span>
+                </h2>
+            </div>
             
             <div class="space-y-8">
                 <div class="glass-card p-8 rounded-3xl border-t border-slate-600">
-                    <p class="text-slate-300 leading-relaxed mb-6">
+                    <p class="text-slate-300 leading-relaxed mb-6 text-sm md:text-base">
                         Proyek <strong>DMTP (Drone Monitoring Testing Platform)</strong> adalah inisiatif penelitian untuk menciptakan standar baru dalam pengujian keselamatan drone. Dengan menggabungkan sensor presisi tinggi dan platform web modern, kami memungkinkan pengembang drone untuk memvalidasi desain mereka secara aman sebelum melakukan penerbangan lapangan.
                     </p>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
                             <span class="block text-2xl font-bold text-white mb-1">IoT</span>
                             <span class="text-xs text-slate-400 uppercase tracking-wider">Integration</span>
@@ -376,7 +426,7 @@
                     </div>
                 </div>
                 
-                <div class="grid md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="glass-card p-6 rounded-3xl relative overflow-hidden group">
                         <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-all group-hover:bg-blue-500/20"></div>
                         <h4 class="text-white font-bold mb-6 uppercase text-sm border-b border-slate-700 pb-2">Tim Pengembang</h4>
@@ -427,25 +477,24 @@
         </div>
     </footer>
 
-    <!-- RESULT MODAL -->
-    <div id="modal" class="fixed inset-0 bg-slate-950/80 z-50 hidden flex items-center justify-center p-6 backdrop-blur-sm transition-opacity opacity-0" style="z-index: 100;">
-        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
-            <div id="modal-icon" class="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl mb-6 shadow-inner transition-colors"></div>
-            <h3 id="modal-title" class="text-2xl font-bold mb-2 uppercase tracking-tight text-white font-oswald"></h3>
-            <div class="h-1 w-12 bg-slate-700 mx-auto mb-4 rounded-full"></div>
-            <p id="modal-desc" class="text-slate-400 text-xs mb-8 leading-relaxed px-2"></p>
-            <button onclick="closeModal()" class="w-full bg-blue-600 py-3.5 rounded-xl font-bold hover:bg-blue-500 transition-all uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
-                Konfirmasi & Reset
-            </button>
-        </div>
-    </div>
-
     <script>
-        // Global variables moved to top
+        // Global variables for Logic
         let chart;
         let isRunning = false;
         let simInterval;
-        let droneGroup, props, led;
+        let toastTimeout;
+        
+        // 3D Three.js Variables
+        let scene, camera, renderer;
+        let droneGroup, sliderGroup, springMesh; 
+        let propellers = [];
+        let ledMaterial;
+        let targetY = 0; 
+        let currentY = 0;
+        let shakeIntensity = 0;
+        let propSpeed = 0.2; // Idle speed
+        let springOriginalH = 0.5;
+        let initialIdleY = 0; // Store initial idle position
 
         // Mobile Menu Toggle Logic
         function toggleMobileMenu() {
@@ -483,34 +532,304 @@
             if(id === 'sim') {
                 setTimeout(() => {
                     if(!chart) initChart();
+                    if(!scene) init3D(); // Initialize 3D on first view
                 }, 100);
             }
         }
 
-        function initApp() {
-            // Grid Init
-            const gridG = document.getElementById('grid');
-            if (gridG) {
-                for(let i=0; i<=800; i+=40) {
-                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    l.setAttribute("x1", i); l.setAttribute("y1", 0); l.setAttribute("x2", i); l.setAttribute("y2", 500);
-                    l.setAttribute("class", "grid-line"); 
-                    l.setAttribute("opacity", i % 200 === 0 ? "0.2" : "0.05");
-                    gridG.appendChild(l);
+        // 3D INITIALIZATION FUNCTION
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (container.children.length > 0) return; // Prevent multiple inits
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            if (width === 0 || height === 0) return; // Prevent init if hidden
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.03); 
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+            camera.position.set(5.5, 4.5, 6.5);
+            camera.lookAt(0, 3.2, 0); 
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Materials
+            const darkGreyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8, metalness: 0.2 }); 
+            const rodMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.1, metalness: 0.8 }); // Chrome
+            const shaftMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.6 }); 
+            const bracketMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 });
+            const cylinderMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.4, metalness: 0.3 }); 
+            const springMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3, metalness: 0.6 }); 
+            const rubberMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.0 });
+            const boltMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.9 }); 
+            
+            // Drone Materials
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.5 }); 
+            const armMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.3 });
+            const motorBellMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.2, metalness: 0.8 }); 
+            const propMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, roughness: 0.1 });
+            const cameraMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1, metalness: 0.9 });
+            const lensMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, roughness: 0.0, metalness: 1.0, emissive: 0x06b6d4, emissiveIntensity: 0.2 });
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 12, 5);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            const blueSpot = new THREE.SpotLight(0x3b82f6, 1.0);
+            blueSpot.position.set(-5, 5, 5);
+            blueSpot.lookAt(0, 2, 0);
+            scene.add(blueSpot);
+
+            // --- 1. STATIC BASE GROUP ---
+            const standGroup = new THREE.Group();
+            
+            // Base Plate
+            const baseGeo = new THREE.BoxGeometry(2.4, 0.15, 2.4);
+            const base = new THREE.Mesh(baseGeo, darkGreyMat);
+            base.position.y = 0.15;
+            base.receiveShadow = true;
+            standGroup.add(base);
+
+            // Rubber Feet & Bolts
+            const footPos = [{x:1.0, z:1.0}, {x:-1.0, z:1.0}, {x:1.0, z:-1.0}, {x:-1.0, z:-1.0}];
+            footPos.forEach(pos => {
+                const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1), rubberMat);
+                foot.position.set(pos.x, 0.05, pos.z);
+                standGroup.add(foot);
+                
+                const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.05, 6), boltMat);
+                bolt.position.set(pos.x * 0.9, 0.23, pos.z * 0.9);
+                standGroup.add(bolt);
+            });
+
+            // 4 Vertical Rods
+            const rodRadius = 0.04;
+            const rodHeight = 2.5; 
+            const rodGeo = new THREE.CylinderGeometry(rodRadius, rodRadius, rodHeight);
+            
+            const rodPos = [
+                {x: 0.28, z: 0.28}, {x: -0.28, z: 0.28},
+                {x: 0.28, z: -0.28}, {x: -0.28, z: -0.28}
+            ];
+            
+            rodPos.forEach(pos => {
+                const rod = new THREE.Mesh(rodGeo, rodMat);
+                rod.position.set(pos.x, rodHeight/2 + 0.2, pos.z); 
+                rod.castShadow = true;
+                standGroup.add(rod);
+                
+                // Top caps
+                const topCap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), boltMat);
+                topCap.position.set(pos.x, rodHeight + 0.21, pos.z);
+                standGroup.add(topCap);
+            });
+
+            // Top Cylinder Housing (Height 0.6)
+            const housingHeight = 0.6;
+            const topCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, housingHeight, 32), cylinderMat);
+            topCyl.position.y = rodHeight + 0.2 + (housingHeight / 2) - 0.1; // Overlap rods slightly
+            topCyl.castShadow = true;
+            standGroup.add(topCyl);
+            
+            // Small Support Cylinder (Resting post) sits on top of housing
+            const supportCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.3, 16), bracketMat);
+            const housingTopY = topCyl.position.y + (housingHeight / 2); // Top of white tube
+            supportCyl.position.y = housingTopY + 0.15; // Center of support cyl
+            supportCyl.castShadow = true;
+            standGroup.add(supportCyl);
+            
+            // Support Rubber Cap
+            const supportCap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 16), rubberMat);
+            const supportTopY = supportCyl.position.y + 0.15;
+            supportCap.position.y = supportTopY + 0.01;
+            standGroup.add(supportCap);
+
+            scene.add(standGroup);
+
+            // --- 3. SLIDER GROUP (Shaft + Drone) ---
+            sliderGroup = new THREE.Group();
+
+            // Central Shaft 
+            const shaftLen = 3.0;
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(rodRadius, rodRadius, shaftLen), shaftMat);
+            shaft.position.y = -shaftLen / 2; 
+            shaft.castShadow = true;
+            sliderGroup.add(shaft);
+
+            // Spring at BOTTOM of shaft
+            const curve = new THREE.CatmullRomCurve3([]);
+            const loops = 6;
+            const sprHeight = 0.4; 
+            const radius = 0.06;
+            for(let i=0; i<=60; i++) {
+                const t = i/60;
+                const angle = t * Math.PI * 2 * loops;
+                const y = t * sprHeight;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                curve.points.push(new THREE.Vector3(x, y, z));
+            }
+            const springGeo = new THREE.TubeGeometry(curve, 60, 0.015, 8, false); 
+            springMesh = new THREE.Mesh(springGeo, springMat);
+            springMesh.position.set(0, -shaftLen + 0.1, 0); 
+            sliderGroup.add(springMesh); 
+            
+            // Spring Stoppers
+            const springStopTop = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 16), bracketMat);
+            springStopTop.position.y = -shaftLen + 0.1 + sprHeight;
+            sliderGroup.add(springStopTop);
+            
+            // Shaft Bottom Details
+            const shaftCapGroup = new THREE.Group();
+            shaftCapGroup.position.y = -shaftLen;
+            const capBody = new THREE.Mesh(new THREE.CylinderGeometry(rodRadius*1.5, rodRadius*1.5, 0.1, 16), bracketMat);
+            capBody.position.y = 0.05;
+            shaftCapGroup.add(capBody);
+            const lockNut = new THREE.Mesh(new THREE.CylinderGeometry(rodRadius*1.2, rodRadius*1.2, 0.08, 6), boltMat);
+            lockNut.position.y = -0.04;
+            shaftCapGroup.add(lockNut);
+            const sensorEye = new THREE.Mesh(new THREE.SphereGeometry(rodRadius*0.8, 16, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.5}));
+            sensorEye.rotation.x = Math.PI;
+            sensorEye.position.y = -0.08;
+            shaftCapGroup.add(sensorEye);
+            sliderGroup.add(shaftCapGroup);
+
+            // Mounting Interface (Connects Shaft to Drone)
+            const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.05, 0.2), bracketMat);
+            mount.position.y = 0.1; // Bottom is at 0.0, Top at 0.2
+            sliderGroup.add(mount);
+
+            // Drone Model
+            const droneOffset = 0.25;
+            droneGroup = new THREE.Group(); 
+            droneGroup.position.y = droneOffset;
+
+            // ... (Drone Geometry Code remains same) ...
+            const hubGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.12, 8); 
+            const hub = new THREE.Mesh(hubGeo, bodyMat);
+            hub.castShadow = true;
+            droneGroup.add(hub);
+            const bat = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.35), darkGreyMat);
+            bat.position.y = 0.11;
+            droneGroup.add(bat);
+            const strap = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.11, 0.05), new THREE.MeshBasicMaterial({color:0xffff00}));
+            strap.position.y = 0.11;
+            droneGroup.add(strap);
+            const camBlock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), cameraMat);
+            camBlock.position.set(0, -0.05, 0.25);
+            droneGroup.add(camBlock);
+            const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16), lensMat);
+            lens.rotation.x = Math.PI/2;
+            lens.position.set(0, -0.05, 0.305);
+            droneGroup.add(lens);
+
+            const armLen = 0.8;
+            const armThickness = 0.04;
+            const createArm = (rotY) => {
+                const armGrp = new THREE.Group();
+                armGrp.rotation.y = rotY;
+                const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, armThickness, armLen), armMat);
+                arm.position.z = armLen/2;
+                armGrp.add(arm);
+                const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16), darkGreyMat);
+                mount.position.z = armLen - 0.1;
+                mount.position.y = 0.03;
+                armGrp.add(mount);
+                const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.08, 16), motorBellMat);
+                bell.position.z = armLen - 0.1;
+                bell.position.y = 0.09;
+                armGrp.add(bell);
+                const propGrp = new THREE.Group();
+                propGrp.position.set(0, 0.14, armLen - 0.1);
+                const bladeGeo = new THREE.BoxGeometry(0.1, 0.005, 1.2);
+                const blade = new THREE.Mesh(bladeGeo, propMat);
+                propGrp.add(blade);
+                const nut = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 16), new THREE.MeshStandardMaterial({color:0xcccccc}));
+                nut.position.y = 0.01;
+                propGrp.add(nut);
+                armGrp.add(propGrp);
+                propellers.push(propGrp); 
+                return armGrp;
+            };
+            droneGroup.add(createArm(Math.PI/4));
+            droneGroup.add(createArm(-Math.PI/4));
+            droneGroup.add(createArm(3*Math.PI/4));
+            droneGroup.add(createArm(-3*Math.PI/4));
+            ledMaterial = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const led = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.04, 0.02), ledMaterial);
+            led.position.set(0, 0, -0.15);
+            droneGroup.add(led);
+            sliderGroup.add(droneGroup);
+
+            // --- INITIAL POSITION CALCULATION (FIXED) ---
+            initialIdleY = 3.6; 
+            currentY = initialIdleY;
+            targetY = initialIdleY;
+            sliderGroup.position.y = currentY;
+
+            scene.add(sliderGroup);
+
+            const gridHelper = new THREE.GridHelper(20, 20, 0x334155, 0x0f172a);
+            scene.add(gridHelper);
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+
+        function onWindowResize() {
+            if(!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (sliderGroup && springMesh) {
+                propellers.forEach((prop, i) => {
+                    const dir = (i % 2 === 0) ? 1 : -1; 
+                    prop.rotation.y += propSpeed * dir; 
+                });
+
+                const delta = (targetY - currentY) * 0.08; 
+                currentY += delta;
+                sliderGroup.position.y = currentY;
+
+                if (shakeIntensity > 0 && droneGroup) {
+                    droneGroup.position.x = (Math.random() - 0.5) * shakeIntensity;
+                    droneGroup.rotation.z = (Math.random() - 0.5) * shakeIntensity * 0.5;
+                } else if (droneGroup) {
+                    droneGroup.position.x = 0;
+                    droneGroup.rotation.z = 0;
                 }
-                for(let i=0; i<=500; i+=40) {
-                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    l.setAttribute("x1", 0); l.setAttribute("y1", i); l.setAttribute("x2", 800); l.setAttribute("y2", i);
-                    l.setAttribute("class", "grid-line"); 
-                    l.setAttribute("opacity", i % 200 === 0 ? "0.2" : "0.05");
-                    gridG.appendChild(l);
-                }
+                
+                sliderGroup.position.x = 0;
+                sliderGroup.rotation.z = 0;
             }
 
-            // Elements
-            droneGroup = document.getElementById('drone-group');
-            props = document.querySelectorAll('.propeller');
-            led = document.getElementById('status-led');
+            if(renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
         }
 
         function initChart() {
@@ -520,15 +839,18 @@
                 data: {
                     labels: Array(30).fill(''),
                     datasets: [
-                        { label: 'Thrust', data: Array(30).fill(0), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' },
-                        { label: 'Vibration', data: Array(30).fill(0), borderColor: '#a855f7', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false }
+                        { label: 'Thrust (g)', data: Array(30).fill(0), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)', yAxisID: 'y' },
+                        { label: 'Vibration (RMS)', data: Array(30).fill(0), borderColor: '#a855f7', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false, yAxisID: 'y1' },
+                        { label: 'Stability (°)', data: Array(30).fill(0), borderColor: '#10b981', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false, yAxisID: 'y1' }
                     ]
                 },
                 options: { 
                     responsive: true, maintainAspectRatio: false, animation: false,
-                    plugins: { legend: { display: false } }, 
+                    layout: { padding: { top: 10, bottom: 0, left: 0, right: 0 } },
+                    plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 10, font: {size: 10} } } }, 
                     scales: { 
-                        y: { display: false, min: 0 }, 
+                        y: { display: true, position: 'left', min: 0, suggestedMax: 1500, grid: { display: false } }, 
+                        y1: { display: true, position: 'right', min: 0, max: 15, grid: { display: false } }, // Max 15 fits both 0-5 RMS and 0-10 Deg
                         x: { display: false } 
                     },
                     elements: { line: { tension: 0.4 } }
@@ -546,11 +868,23 @@
 
         function runTest(mode) {
             if (!chart) {
-                console.log("Chart not ready, initializing...");
                 initChart();
             }
+            
+            // Clear any existing toast
+            clearTimeout(toastTimeout);
+            document.getElementById('result-toast').classList.remove('show');
+            document.getElementById('result-toast').classList.add('hide');
 
-            if(isRunning) return;
+            if(isRunning) {
+                return;
+            }
+            
+            targetY = initialIdleY;
+            currentY = initialIdleY; // Force reset position to start clean
+            sliderGroup.position.y = currentY;
+            if(ledMaterial) ledMaterial.color.setHex(0xeab308); // Reset LED
+            
             isRunning = true;
             let time = 0;
             
@@ -563,115 +897,163 @@
             
             log(`Starting simulation sequence: ${mode.toUpperCase()} MODE`);
             
-            if(props) props.forEach(p => p.style.display = 'block');
-            if(led) led.setAttribute('fill', '#eab308');
-
+            const maxY = 5.0;
+            
             simInterval = setInterval(() => {
                 time += 0.1;
-                let thrust = 0, vib = 0;
+                let thrust = 0, vib = 0, stab = 0;
+                
+                // --- UPDATE LOGIC VIBRASI (VIB) AGAR LEBIH SMOOTH ---
+                // Menggunakan sin wave base + sedikit noise agar lebih "wavy" mirip stability
                 
                 if (time < 2) {
-                    thrust = (time/2) * 800;
-                    vib = Math.random() * 0.2;
+                    // SPOOL UP
+                    thrust = (time/2) * 800; 
+                    
+                    // Vib naik perlahan, sedikit gelombang
+                    let wave = Math.sin(time * 5) * 0.1;
+                    vib = (time/2) * 0.3 + wave + (Math.random() * 0.05);
+                    if(vib < 0) vib = 0;
+                    
+                    stab = Math.random() * 0.5; // Near 0 deg
                     statusLabel.innerText = "SPOOLING UP...";
+                    propSpeed = 0.2 + (time/2) * 1.0; 
                 } 
                 else if (time < 8) {
+                    // ACTIVE TEST
                     if (mode === 'normal') {
-                        thrust = 950 + (Math.random() - 0.5) * 50;
-                        vib = 0.3 + Math.random() * 0.2;
+                        // NORMAL: Stabil di angka rendah
+                        thrust = 1100 + (Math.sin(time*3) * 50) + (Math.random() * 50); 
+                        
+                        // Vib normal: Gelombang halus di sekitar 0.4
+                        let wave = Math.sin(time * 2) * 0.1; 
+                        vib = 0.4 + wave + (Math.random() * 0.1);
+                        
+                        stab = 1.0 + (Math.sin(time * 1.5) * 0.5) + (Math.random() * 0.3); // 1.0 - 2.5 degrees
+                        
+                        targetY = maxY; 
+                        shakeIntensity = 0.01; 
+                        propSpeed = 1.8; 
+
                         statusDiv.className = 'status-badge pass opacity-100';
                         statusLabel.innerText = "OPTIMAL";
-                        if(led) led.setAttribute('fill', '#22c55e');
+                        if(ledMaterial) ledMaterial.color.setHex(0x22c55e); 
                     } else {
-                        thrust = 600 + (Math.random() - 0.5) * 400;
-                        vib = 2.5 + Math.random() * 2.0;
+                        // FAIL: Tidak stabil
+                        thrust = 700 + (Math.random() - 0.5) * 500; 
+                        
+                        // Vib fail: Gelombang besar di sekitar 2.5 - 3.5
+                        let wave = Math.sin(time * 4) * 0.8;
+                        vib = 3.0 + wave + (Math.random() * 0.5);
+                        
+                        stab = 6.0 + (Math.sin(time * 2) * 2.0) + (Math.random() * 1.0); // 4.0 - 9.0 degrees
+                        
+                        targetY = initialIdleY + 0.3 + Math.sin(time*10)*0.1; 
+                        shakeIntensity = 0.15; 
+                        propSpeed = 0.8; 
+
                         statusDiv.className = 'status-badge fail opacity-100';
                         statusLabel.innerText = "CRITICAL VIB";
-                        if(led) led.setAttribute('fill', '#ef4444');
+                        if(ledMaterial) ledMaterial.color.setHex(0xef4444); 
                     }
                 } 
                 else {
+                    // COOLDOWN
                     thrust = Math.max(0, 1000 - (time-8)*500);
-                    vib = Math.max(0, 1 - (time-8));
+                    vib = Math.max(0, vib * 0.9); // Decay
+                    stab = Math.max(0, stab - 0.5);
+                    
+                    targetY = initialIdleY; // Return to idle
+                    shakeIntensity = 0;
+                    propSpeed = Math.max(0.2, propSpeed * 0.9);
+
                     statusLabel.innerText = "COOLDOWN";
-                    if(led) led.setAttribute('fill', '#eab308');
+                    if(ledMaterial) ledMaterial.color.setHex(0xeab308); 
                 }
 
-                updateVisuals(thrust, vib);
+                updateVisuals(thrust, vib, stab);
 
                 if (time >= 10) {
                     clearInterval(simInterval);
                     isRunning = false;
+                    propSpeed = 0.2; 
                     showResult(mode);
                     log(`Sequence finished. Result: ${mode === 'normal' ? 'PASS' : 'FAIL'}`);
                 }
             }, 50);
         }
 
-        function updateVisuals(t, v) {
+        function updateVisuals(t, v, s) {
             document.getElementById('txt-thrust').innerText = Math.floor(t);
-            document.getElementById('bar-thrust').style.width = `${Math.min((t/1200)*100, 100)}%`;
+            document.getElementById('bar-thrust').style.width = `${Math.min((t/1500)*100, 100)}%`;
             document.getElementById('txt-vib').innerText = v.toFixed(2);
             document.getElementById('bar-vib').style.width = `${Math.min((v/5)*100, 100)}%`;
-
-            if(droneGroup) {
-                const yPos = 400 - (t/1300) * 320;
-                const xOff = (v > 1.0) ? (Math.random()-0.5) * (v*4) : 0;
-                droneGroup.setAttribute('transform', `translate(${400 + xOff}, ${yPos})`);
-            }
+            
+            document.getElementById('txt-stab').innerText = s.toFixed(1);
+            document.getElementById('bar-stab').style.width = `${Math.min((s/10)*100, 100)}%`;
             
             if(chart && chart.data) {
                 chart.data.datasets[0].data.push(t);
-                chart.data.datasets[1].data.push(v * 200);
+                chart.data.datasets[1].data.push(v); // Raw value
+                chart.data.datasets[2].data.push(s); 
+                
                 chart.data.datasets[0].data.shift();
                 chart.data.datasets[1].data.shift();
+                chart.data.datasets[2].data.shift();
                 chart.update('none');
             }
         }
+        
+        function closeToast() {
+            const toast = document.getElementById('result-toast');
+            clearTimeout(toastTimeout);
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+        }
 
         function showResult(mode) {
-            const modal = document.getElementById('modal');
-            const icon = document.getElementById('modal-icon');
-            const title = document.getElementById('modal-title');
-            const desc = document.getElementById('modal-desc');
+            const toast = document.getElementById('result-toast');
+            const icon = document.getElementById('toast-icon');
+            const title = document.getElementById('toast-title');
             
-            modal.classList.remove('hidden');
+            // Note: We removed the 'desc' element for the thin/minimal version
+            
+            toast.classList.remove('hide');
+            
+            // Allow browser reflow for animation
             setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                modal.children[0].classList.remove('scale-95');
-                modal.children[0].classList.add('scale-100');
+                 toast.classList.add('show');
             }, 10);
-
-            if(props) props.forEach(p => p.style.display = 'none');
             
             if(mode === 'normal') {
-                icon.className = "w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-6 bg-green-500/10 text-green-500 border-2 border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]";
+                // Remove existing border colors to reset and apply new horizontal thin style
+                // Using flex-row, items-center, justify-between for the thin strip look
+                toast.className = "flex flex-row items-center justify-center px-8 py-5 rounded-2xl border border-green-500/30 bg-slate-900/95 backdrop-blur-xl shadow-[0_0_50px_rgba(34,197,94,0.2)] min-w-[320px] max-w-sm gap-5 relative overflow-hidden group transition-all duration-300 pointer-events-auto show";
+                
+                icon.className = "w-10 h-10 rounded-full flex items-center justify-center text-xl bg-green-500/10 text-green-500 border border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0 relative z-10";
                 icon.innerHTML = '<i class="fas fa-check"></i>';
-                title.innerText = "Layak Terbang";
-                title.className = "text-3xl font-bold mb-3 uppercase tracking-tighter text-green-400 font-oswald";
-                desc.innerText = "Sistem mengonfirmasi parameter Thrust dan Vibrasi dalam kondisi optimal. Unit aman untuk operasi penerbangan.";
+                
+                title.innerText = "LAYAK TERBANG";
+                title.className = "text-xl font-bold uppercase font-oswald tracking-tight text-green-400 whitespace-nowrap relative z-10";
+                
             } else {
-                icon.className = "w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-6 bg-red-500/10 text-red-500 border-2 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.3)]";
+                toast.className = "flex flex-row items-center justify-center px-8 py-5 rounded-2xl border border-red-500/30 bg-slate-900/95 backdrop-blur-xl shadow-[0_0_50px_rgba(239,68,68,0.2)] min-w-[320px] max-w-sm gap-5 relative overflow-hidden group transition-all duration-300 pointer-events-auto show";
+                
+                icon.className = "w-10 h-10 rounded-full flex items-center justify-center text-xl bg-red-500/10 text-red-500 border border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)] shrink-0 relative z-10";
                 icon.innerHTML = '<i class="fas fa-times"></i>';
-                title.innerText = "Gagal Uji";
-                title.className = "text-3xl font-bold mb-3 uppercase tracking-tighter text-red-400 font-oswald";
-                desc.innerText = "Terdeteksi anomali kritis. Vibrasi melebihi ambang batas aman (1.5 RMS). Periksa keseimbangan motor dan propeler.";
+                
+                title.innerText = "TIDAK LAYAK TERBANG";
+                title.className = "text-xl font-bold uppercase font-oswald tracking-tight text-red-400 whitespace-nowrap relative z-10";
             }
+
+            // Auto dismiss after 8 seconds (sedikit lebih lama agar sempat baca/close)
+            toastTimeout = setTimeout(() => {
+                closeToast();
+            }, 8000);
         }
 
-        function closeModal() {
-            const modal = document.getElementById('modal');
-            modal.classList.add('opacity-0');
-            modal.children[0].classList.add('scale-95');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-            
-            document.getElementById('status-display').classList.add('hidden');
-            if(droneGroup) droneGroup.setAttribute('transform', `translate(400, 400)`);
-            if(led) led.setAttribute('fill', '#ef4444');
-            log("System reset. Ready.");
-        }
-
-        document.addEventListener('DOMContentLoaded', initApp);
+        // Only init chart on load, 3D init is triggered by tab switch
+        document.addEventListener('DOMContentLoaded', initChart);
     </script>
 </body>
 </html>
