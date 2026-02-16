@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMTP - Drone Flight Worthiness Assessment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        oswald: ['Oswald', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #020617; color: white; overflow-x: hidden; }
+        
+        .viewport-container { 
+            width: 100%; 
+            height: 500px; 
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            border-radius: 1.5rem; 
+            position: relative; 
+            overflow: hidden;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.1);
+            z-index: 10;
+        }
+        
+        #drone-group { transition: transform 0.1s linear; }
+        .propeller { transform-origin: center; animation: spin 0.1s linear infinite; display: none; }
+        @keyframes spin { from { opacity: 0.3; } to { opacity: 0.9; } }
+
+        .status-badge {
+            position: absolute; top: 1.5rem; left: 1.5rem; padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem; font-weight: 800; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.1em; z-index: 20;
+            backdrop-filter: blur(8px); border: 1px solid transparent;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .checking { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #93c5fd; }
+        .pass { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #86efac; }
+        .fail { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #fca5a5; }
+        
+        .grid-line { stroke: #1e293b; stroke-width: 1; }
+        
+        .nav-link { position: relative; }
+        .nav-link::after {
+            content: ''; position: absolute; width: 0; height: 2px; bottom: -4px; left: 0;
+            background-color: #3b82f6; transition: width 0.3s;
+        }
+        .nav-link:hover::after, .nav-link.active::after { width: 100%; }
+        .nav-link.active { color: #60a5fa; }
+        
+        .section-hidden { display: none; animation: fadeOut 0.3s ease-in-out; }
+        .section-visible { display: block; animation: fadeIn 0.5s ease-in-out; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.7); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(51, 65, 85, 0.5); 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative selection:bg-blue-500 selection:text-white">
+
+    <!-- Ambient Background blobs -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
+        <div class="absolute top-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-32 left-1/2 w-96 h-96 bg-cyan-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- NAVIGATION BAR -->
+    <nav class="sticky top-0 z-50 glass-card border-b border-slate-700/50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <button onclick="showSection('home')" class="flex items-center gap-3 group hover:opacity-80 transition cursor-pointer">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">D</div>
+                <div class="flex flex-col items-start">
+                    <span class="text-lg font-bold tracking-tighter uppercase font-oswald leading-none">DMTP</span>
+                    <span class="text-[10px] tracking-[0.2em] text-blue-400 font-bold">FRAMEWORK</span>
+                </div>
+            </button>
+            
+            <div class="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
+                <button onclick="showSection('home')" id="link-home" class="nav-link active hover:text-white transition-colors">Beranda</button>
+                <button onclick="showSection('sim')" id="link-sim" class="nav-link hover:text-white transition-colors">Simulasi Uji</button>
+                <button onclick="showSection('about')" id="link-about" class="nav-link hover:text-white transition-colors">Tentang</button>
+            </div>
+            
+            <div class="w-10"></div> <!-- Spacer -->
+        </div>
+    </nav>
+
+    <main class="flex-grow relative">
+        <!-- SECTION: HOME -->
+        <section id="section-home" class="section-visible py-24 px-6 relative overflow-hidden">
+            <div class="max-w-5xl mx-auto text-center relative z-10">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/50 border border-slate-700/50 text-blue-400 text-[10px] font-bold mb-8 uppercase tracking-widest shadow-sm backdrop-blur-sm animate-fade-in-up">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    System Ready v2.5
+                </div>
+                
+                <h2 class="text-5xl md:text-7xl font-bold mb-8 leading-tight tracking-tighter font-oswald animate-float">
+                    ASESMEN KELAYAKAN <br/>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">TERBANG DRONE</span>
+                </h2>
+                
+                <p class="text-slate-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+                    Sistem pengujian statis berbasis IoT yang presisi untuk analisis kuantitatif performa drone sebelum penerbangan bebas.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <button onclick="showSection('sim')" class="group relative px-8 py-4 bg-blue-600 rounded-xl font-bold text-sm uppercase tracking-widest text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 transition-all overflow-hidden w-full sm:w-auto cursor-pointer z-20">
+                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                        <span class="relative flex items-center justify-center gap-2"> Simulasi Pengujian <i class="fas fa-arrow-right"></i></span>
+                    </button>
+                    <button onclick="showSection('about')" class="px-8 py-4 border border-slate-700 hover:border-slate-500 bg-slate-800/30 rounded-xl font-bold text-sm uppercase tracking-widest text-slate-300 hover:text-white transition-all w-full sm:w-auto hover:bg-slate-800/50 cursor-pointer z-20">
+                        Pelajari Sistem
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Feature Cards -->
+            <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-6 mt-24 px-4">
+                <div class="glass-card p-8 rounded-2xl group hover:border-blue-500/30 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-satellite-dish text-blue-400 text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-bold mb-3 text-white">Telemetri Real-Time</h4>
+                    <p class="text-slate-400 text-sm leading-relaxed">Monitoring presisi parameter Thrust (gaya angkat) dan Vibrasi dengan latensi ultra-rendah via WebSocket.</p>
+                </div>
+                
+                <div class="glass-card p-8 rounded-2xl group hover:border-purple-500/30 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-brain text-purple-400 text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-bold mb-3 text-white">Analisis Cerdas</h4>
+                    <p class="text-slate-400 text-sm leading-relaxed">Algoritma otomatis memvalidasi TWR (Thrust-to-Weight Ratio) dan stabilitas sudut kemiringan.</p>
+                </div>
+                
+                <div class="glass-card p-8 rounded-2xl group hover:border-cyan-500/30 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-shield-alt text-cyan-400 text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-bold mb-3 text-white">Standar Keamanan</h4>
+                    <p class="text-slate-400 text-sm leading-relaxed">Framework pengujian statis meminimalisir risiko kerusakan perangkat keras pada tahap awal pengembangan.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: SIMULATION (DASHBOARD) -->
+        <section id="section-sim" class="section-hidden py-10 px-4 md:px-8 max-w-[1400px] mx-auto">
+            <!-- Header with Back Button -->
+            <div class="flex items-center justify-between mb-8">
+                <div class="text-right">
+                    <h2 class="text-2xl font-bold font-oswald uppercase tracking-tight">Dashboard Pengujian</h2>
+                    <p class="text-xs text-slate-500 font-mono">LIVE SIMULATION MODE</p>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6">
+                <!-- VIEWPORT 2D SIDE VIEW -->
+                <div class="lg:col-span-8">
+                    <div class="viewport-container shadow-2xl relative group">
+                        <!-- Overlay Status -->
+                        <div id="status-display" class="status-badge hidden transition-all duration-300 transform translate-y-2 opacity-0">
+                            <i class="fas fa-microchip mr-2"></i> STATUS: <span id="status-label">ANALYZING</span>
+                        </div>
+
+                        <!-- Technical Grid Overlay (Decorative) -->
+                        <div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+                        <svg width="100%" height="100%" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet" class="relative z-10">
+                            <!-- Grid will be injected here -->
+                            <g id="grid"></g>
+
+                            <!-- Rig Structure -->
+                            <rect x="385" y="50" width="30" height="400" fill="#334155" rx="4" filter="drop-shadow(2px 2px 4px rgba(0,0,0,0.5))" /> 
+                            <rect x="250" y="440" width="300" height="30" fill="#1e293b" rx="4" />
+                            
+                            <!-- Measurements -->
+                            <g stroke="#64748b" stroke-width="1" stroke-dasharray="2 2">
+                                <line x1="430" y1="100" x2="460" y2="100" /> <text x="470" y="105" fill="#64748b" font-size="10" font-family="monospace">MAX ALT</text>
+                                <line x1="430" y1="300" x2="460" y2="300" /> <text x="470" y="305" fill="#64748b" font-size="10" font-family="monospace">MID POINT</text>
+                            </g>
+
+                            <!-- LARGER DRONE GROUP (Side View) -->
+                            <g id="drone-group" transform="translate(400, 400)">
+                                <!-- Slider Mechanism -->
+                                <rect x="-25" y="-20" width="50" height="70" fill="#475569" rx="4" stroke="#1e293b" stroke-width="1" />
+                                
+                                <!-- Main Frame (Side Profile) -->
+                                <path d="M-120,-5 L120,-5 L130,10 L110,20 L-110,20 L-130,10 Z" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+                                
+                                <!-- Central Hub -->
+                                <rect x="-45" y="-25" width="90" height="35" fill="#1e293b" rx="6" stroke="#3b82f6" stroke-width="1" />
+                                <text x="0" y="-8" text-anchor="middle" fill="#3b82f6" font-size="8" font-weight="bold" font-family="Arial">ESP32</text>
+                                
+                                <!-- Motors -->
+                                <defs>
+                                    <linearGradient id="motorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" style="stop-color:#334155;stop-opacity:1" />
+                                        <stop offset="50%" style="stop-color:#475569;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#334155;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                                <rect x="-115" y="-15" width="22" height="25" fill="url(#motorGrad)" rx="2" />
+                                <rect x="93" y="-15" width="22" height="25" fill="url(#motorGrad)" rx="2" />
+                                
+                                <!-- Propellers -->
+                                <g class="propeller" id="prop-left">
+                                    <ellipse cx="-104" cy="-18" rx="70" ry="2" fill="#e2e8f0" fill-opacity="0.8" />
+                                </g>
+                                <g class="propeller" id="prop-right">
+                                    <ellipse cx="104" cy="-18" rx="70" ry="2" fill="#e2e8f0" fill-opacity="0.8" />
+                                </g>
+
+                                <!-- Status LED -->
+                                <circle cx="0" cy="-35" r="4" fill="#ef4444" id="status-led" class="transition-colors duration-300" />
+                            </g>
+                        </svg>
+                    </div>
+
+                    <!-- CONTROLS - Added Z-Index and Relative positioning to ensure clickability -->
+                    <div class="grid grid-cols-2 gap-4 mt-6 relative z-20">
+                        <button type="button" onclick="runTest('normal')" class="relative overflow-hidden bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest shadow-lg shadow-blue-500/20 group cursor-pointer">
+                            <span class="relative z-10 flex items-center gap-2"><i class="fas fa-play"></i> Uji Kelayakan</span>
+                            <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+                        </button>
+                        <button type="button" onclick="runTest('fail')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-500/50 hover:text-red-400 py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest group cursor-pointer">
+                            <i class="fas fa-bug group-hover:animate-bounce"></i> Simulasi Gagal
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TELEMETRY -->
+                <div class="lg:col-span-4 space-y-4 flex flex-col h-full">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-blue-500">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Thrust</span>
+                                <i class="fas fa-tachometer-alt text-blue-500 text-xs"></i>
+                            </div>
+                            <div class="flex items-baseline gap-1">
+                                <span id="txt-thrust" class="text-3xl font-bold tracking-tighter text-white">0</span>
+                                <span class="text-slate-500 text-[10px] font-mono">g</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 h-1 mt-2 rounded-full overflow-hidden">
+                                <div id="bar-thrust" class="h-full bg-blue-500 w-0 transition-all duration-100"></div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-purple-500">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Vibration</span>
+                                <i class="fas fa-wave-square text-purple-500 text-xs"></i>
+                            </div>
+                            <div class="flex items-baseline gap-1">
+                                <span id="txt-vib" class="text-3xl font-bold tracking-tighter text-white">0.0</span>
+                                <span class="text-slate-500 text-[10px] font-mono">RMS</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 h-1 mt-2 rounded-full overflow-hidden">
+                                <div id="bar-vib" class="h-full bg-purple-500 w-0 transition-all duration-100"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card p-5 rounded-2xl flex-grow flex flex-col">
+                        <h4 class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Real-time Telemetry</h4>
+                        <div class="flex-grow relative w-full h-full min-h-[180px]">
+                            <canvas id="telemetryChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 backdrop-blur border border-slate-800 p-4 rounded-2xl h-40 font-mono text-[10px] text-blue-400/80 overflow-y-auto custom-scroll shadow-inner" id="log-container">
+                        <div class="border-b border-slate-800/50 pb-1 mb-1 text-slate-500">System Log:</div>
+                        <div>> System initialized.</div>
+                        <div>> Waiting for test sequence...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: ABOUT -->
+        <section id="section-about" class="section-hidden py-16 px-6 max-w-4xl mx-auto">
+            <!-- Back Button for About Page -->
+
+            <h2 class="text-4xl md:text-5xl font-bold mb-10 uppercase tracking-tight font-oswald">Mengenai <span class="text-blue-500">Proyek</span></h2>
+            
+            <div class="space-y-8">
+                <div class="glass-card p-8 rounded-3xl border-t border-slate-600">
+                    <p class="text-slate-300 leading-relaxed mb-6">
+                        Proyek <strong>DMTP (Drone Monitoring Testing Platform)</strong> adalah inisiatif penelitian untuk menciptakan standar baru dalam pengujian keselamatan drone. Dengan menggabungkan sensor presisi tinggi dan platform web modern, kami memungkinkan pengembang drone untuk memvalidasi desain mereka secara aman sebelum melakukan penerbangan lapangan.
+                    </p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                            <span class="block text-2xl font-bold text-white mb-1">IoT</span>
+                            <span class="text-xs text-slate-400 uppercase tracking-wider">Integration</span>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                            <span class="block text-2xl font-bold text-white mb-1">Web</span>
+                            <span class="text-xs text-slate-400 uppercase tracking-wider">Monitoring</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-all group-hover:bg-blue-500/20"></div>
+                        <h4 class="text-white font-bold mb-6 uppercase text-sm border-b border-slate-700 pb-2">Tim Pengembang</h4>
+                        <ul class="space-y-4">
+                            <li class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center font-bold text-blue-400 border border-slate-700">A</div>
+                                <div>
+                                    <p class="text-white font-bold text-sm">Muhammad Azi Triyadi</p>
+                                    <p class="text-[10px] text-slate-400">714240025 - Lead Developer</p>
+                                </div>
+                            </li>
+                            <li class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center font-bold text-cyan-400 border border-slate-700">F</div>
+                                <div>
+                                    <p class="text-white font-bold text-sm">Fiqry Firmansyah</p>
+                                    <p class="text-[10px] text-slate-400">714240054 - Hardware Engineer</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="glass-card p-6 rounded-3xl">
+                        <h4 class="text-white font-bold mb-6 uppercase text-sm border-b border-slate-700 pb-2">Tech Stack</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-[10px] font-mono text-blue-300">React / Next.js</span>
+                            <span class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-[10px] font-mono text-green-300">MongoDB</span>
+                            <span class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-[10px] font-mono text-purple-300">ESP32</span>
+                            <span class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-[10px] font-mono text-orange-300">WebSocket</span>
+                            <span class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-[10px] font-mono text-cyan-300">Tailwind CSS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800 mt-auto bg-slate-900/50 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto py-8 px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <p class="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">© 2025 Universitas Logistik & Bisnis Internasional</p>
+                <p class="text-slate-600 text-[9px]">Program Studi DIV Teknik Informatika</p>
+            </div>
+            <div class="flex gap-4">
+                <a href="#" class="text-slate-500 hover:text-white transition"><i class="fab fa-github"></i></a>
+                <a href="#" class="text-slate-500 hover:text-white transition"><i class="fab fa-linkedin"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- RESULT MODAL -->
+    <div id="modal" class="fixed inset-0 bg-slate-950/80 z-50 hidden flex items-center justify-center p-6 backdrop-blur-sm transition-opacity opacity-0" style="z-index: 100;">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <div id="modal-icon" class="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl mb-6 shadow-inner transition-colors"></div>
+            <h3 id="modal-title" class="text-2xl font-bold mb-2 uppercase tracking-tight text-white font-oswald"></h3>
+            <div class="h-1 w-12 bg-slate-700 mx-auto mb-4 rounded-full"></div>
+            <p id="modal-desc" class="text-slate-400 text-xs mb-8 leading-relaxed px-2"></p>
+            <button onclick="closeModal()" class="w-full bg-blue-600 py-3.5 rounded-xl font-bold hover:bg-blue-500 transition-all uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
+                Konfirmasi & Reset
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables moved to top
+        let chart;
+        let isRunning = false;
+        let simInterval;
+        let droneGroup, props, led;
+
+        // Navigation Logic
+        function showSection(id) {
+            const sections = ['home', 'sim', 'about'];
+            sections.forEach(s => {
+                const el = document.getElementById('section-' + s);
+                el.classList.remove('section-visible');
+                el.classList.add('section-hidden');
+                document.getElementById('link-' + s).classList.remove('active', 'text-white');
+            });
+
+            const target = document.getElementById('section-' + id);
+            target.classList.remove('section-hidden');
+            setTimeout(() => target.classList.add('section-visible'), 10);
+            
+            document.getElementById('link-' + id).classList.add('active', 'text-white');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            if(id === 'sim') {
+                setTimeout(() => {
+                    if(!chart) initChart();
+                }, 100);
+            }
+        }
+
+        function initApp() {
+            // Grid Init
+            const gridG = document.getElementById('grid');
+            if (gridG) {
+                for(let i=0; i<=800; i+=40) {
+                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    l.setAttribute("x1", i); l.setAttribute("y1", 0); l.setAttribute("x2", i); l.setAttribute("y2", 500);
+                    l.setAttribute("class", "grid-line"); 
+                    l.setAttribute("opacity", i % 200 === 0 ? "0.2" : "0.05");
+                    gridG.appendChild(l);
+                }
+                for(let i=0; i<=500; i+=40) {
+                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    l.setAttribute("x1", 0); l.setAttribute("y1", i); l.setAttribute("x2", 800); l.setAttribute("y2", i);
+                    l.setAttribute("class", "grid-line"); 
+                    l.setAttribute("opacity", i % 200 === 0 ? "0.2" : "0.05");
+                    gridG.appendChild(l);
+                }
+            }
+
+            // Elements
+            droneGroup = document.getElementById('drone-group');
+            props = document.querySelectorAll('.propeller');
+            led = document.getElementById('status-led');
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('telemetryChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(30).fill(''),
+                    datasets: [
+                        { label: 'Thrust', data: Array(30).fill(0), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' },
+                        { label: 'Vibration', data: Array(30).fill(0), borderColor: '#a855f7', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false }
+                    ]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, animation: false,
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        y: { display: false, min: 0 }, 
+                        x: { display: false } 
+                    },
+                    elements: { line: { tension: 0.4 } }
+                }
+            });
+        }
+
+        function log(msg) {
+            const container = document.getElementById('log-container');
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString('id-ID', {hour12: false});
+            div.innerHTML = `<span class="opacity-50">[${time}]</span> ${msg}`;
+            container.prepend(div);
+        }
+
+        function runTest(mode) {
+            if (!chart) {
+                console.log("Chart not ready, initializing...");
+                initChart();
+            }
+
+            if(isRunning) return;
+            isRunning = true;
+            let time = 0;
+            
+            const statusDiv = document.getElementById('status-display');
+            const statusLabel = document.getElementById('status-label');
+            statusDiv.classList.remove('hidden', 'opacity-0');
+            statusDiv.classList.add('opacity-100');
+            statusDiv.className = 'status-badge checking opacity-100';
+            statusLabel.innerText = "INITIALIZING...";
+            
+            log(`Starting simulation sequence: ${mode.toUpperCase()} MODE`);
+            
+            if(props) props.forEach(p => p.style.display = 'block');
+            if(led) led.setAttribute('fill', '#eab308');
+
+            simInterval = setInterval(() => {
+                time += 0.1;
+                let thrust = 0, vib = 0;
+                
+                if (time < 2) {
+                    thrust = (time/2) * 800;
+                    vib = Math.random() * 0.2;
+                    statusLabel.innerText = "SPOOLING UP...";
+                } 
+                else if (time < 8) {
+                    if (mode === 'normal') {
+                        thrust = 950 + (Math.random() - 0.5) * 50;
+                        vib = 0.3 + Math.random() * 0.2;
+                        statusDiv.className = 'status-badge pass opacity-100';
+                        statusLabel.innerText = "OPTIMAL";
+                        if(led) led.setAttribute('fill', '#22c55e');
+                    } else {
+                        thrust = 600 + (Math.random() - 0.5) * 400;
+                        vib = 2.5 + Math.random() * 2.0;
+                        statusDiv.className = 'status-badge fail opacity-100';
+                        statusLabel.innerText = "CRITICAL VIB";
+                        if(led) led.setAttribute('fill', '#ef4444');
+                    }
+                } 
+                else {
+                    thrust = Math.max(0, 1000 - (time-8)*500);
+                    vib = Math.max(0, 1 - (time-8));
+                    statusLabel.innerText = "COOLDOWN";
+                    if(led) led.setAttribute('fill', '#eab308');
+                }
+
+                updateVisuals(thrust, vib);
+
+                if (time >= 10) {
+                    clearInterval(simInterval);
+                    isRunning = false;
+                    showResult(mode);
+                    log(`Sequence finished. Result: ${mode === 'normal' ? 'PASS' : 'FAIL'}`);
+                }
+            }, 50);
+        }
+
+        function updateVisuals(t, v) {
+            document.getElementById('txt-thrust').innerText = Math.floor(t);
+            document.getElementById('bar-thrust').style.width = `${Math.min((t/1200)*100, 100)}%`;
+            document.getElementById('txt-vib').innerText = v.toFixed(2);
+            document.getElementById('bar-vib').style.width = `${Math.min((v/5)*100, 100)}%`;
+
+            if(droneGroup) {
+                const yPos = 400 - (t/1300) * 320;
+                const xOff = (v > 1.0) ? (Math.random()-0.5) * (v*4) : 0;
+                droneGroup.setAttribute('transform', `translate(${400 + xOff}, ${yPos})`);
+            }
+            
+            if(chart && chart.data) {
+                chart.data.datasets[0].data.push(t);
+                chart.data.datasets[1].data.push(v * 200);
+                chart.data.datasets[0].data.shift();
+                chart.data.datasets[1].data.shift();
+                chart.update('none');
+            }
+        }
+
+        function showResult(mode) {
+            const modal = document.getElementById('modal');
+            const icon = document.getElementById('modal-icon');
+            const title = document.getElementById('modal-title');
+            const desc = document.getElementById('modal-desc');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.children[0].classList.remove('scale-95');
+                modal.children[0].classList.add('scale-100');
+            }, 10);
+
+            if(props) props.forEach(p => p.style.display = 'none');
+            
+            if(mode === 'normal') {
+                icon.className = "w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-6 bg-green-500/10 text-green-500 border-2 border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]";
+                icon.innerHTML = '<i class="fas fa-check"></i>';
+                title.innerText = "Layak Terbang";
+                title.className = "text-3xl font-bold mb-3 uppercase tracking-tighter text-green-400 font-oswald";
+                desc.innerText = "Sistem mengonfirmasi parameter Thrust dan Vibrasi dalam kondisi optimal. Unit aman untuk operasi penerbangan.";
+            } else {
+                icon.className = "w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-6 bg-red-500/10 text-red-500 border-2 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.3)]";
+                icon.innerHTML = '<i class="fas fa-times"></i>';
+                title.innerText = "Gagal Uji";
+                title.className = "text-3xl font-bold mb-3 uppercase tracking-tighter text-red-400 font-oswald";
+                desc.innerText = "Terdeteksi anomali kritis. Vibrasi melebihi ambang batas aman (1.5 RMS). Periksa keseimbangan motor dan propeler.";
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.add('opacity-0');
+            modal.children[0].classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            
+            document.getElementById('status-display').classList.add('hidden');
+            if(droneGroup) droneGroup.setAttribute('transform', `translate(400, 400)`);
+            if(led) led.setAttribute('fill', '#ef4444');
+            log("System reset. Ready.");
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
