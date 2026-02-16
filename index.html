@@ -85,6 +85,18 @@
         }
         .nav-link:hover::after, .nav-link.active::after { width: 100%; }
         .nav-link.active { color: #60a5fa; }
+
+        /* Mobile Menu Animation */
+        #mobile-menu {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        #mobile-menu.open {
+            max-height: 400px;
+            opacity: 1;
+        }
         
         .section-hidden { display: none; animation: fadeOut 0.3s ease-in-out; }
         .section-visible { display: block; animation: fadeIn 0.5s ease-in-out; }
@@ -116,7 +128,8 @@
 
     <!-- NAVIGATION BAR -->
     <nav class="sticky top-0 z-50 glass-card border-b border-slate-700/50 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between relative z-50">
+            <!-- LOGO -->
             <button onclick="showSection('home')" class="flex items-center gap-3 group hover:opacity-80 transition cursor-pointer">
                 <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">D</div>
                 <div class="flex flex-col items-start">
@@ -125,13 +138,29 @@
                 </div>
             </button>
             
+            <!-- DESKTOP MENU -->
             <div class="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
                 <button onclick="showSection('home')" id="link-home" class="nav-link active hover:text-white transition-colors">Beranda</button>
                 <button onclick="showSection('sim')" id="link-sim" class="nav-link hover:text-white transition-colors">Simulasi Uji</button>
                 <button onclick="showSection('about')" id="link-about" class="nav-link hover:text-white transition-colors">Tentang</button>
             </div>
             
-            <div class="w-10"></div> <!-- Spacer -->
+            <!-- Spacer for Desktop centering -->
+            <div class="hidden md:block w-10"></div> 
+
+            <!-- MOBILE HAMBURGER BUTTON -->
+            <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-300 hover:text-white focus:outline-none transition-colors">
+                <i id="menu-icon" class="fas fa-bars text-xl"></i>
+            </button>
+        </div>
+
+        <!-- MOBILE MENU DROPDOWN -->
+        <div id="mobile-menu" class="absolute top-full left-0 w-full bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 md:hidden z-40">
+            <div class="flex flex-col p-6 gap-6 text-center">
+                <button onclick="showSection('home'); toggleMobileMenu()" class="text-sm font-bold uppercase tracking-widest text-slate-300 hover:text-white transition-colors py-2 border-b border-slate-800">Beranda</button>
+                <button onclick="showSection('sim'); toggleMobileMenu()" class="text-sm font-bold uppercase tracking-widest text-slate-300 hover:text-white transition-colors py-2 border-b border-slate-800">Simulasi Uji</button>
+                <button onclick="showSection('about'); toggleMobileMenu()" class="text-sm font-bold uppercase tracking-widest text-slate-300 hover:text-white transition-colors py-2">Tentang</button>
+            </div>
         </div>
     </nav>
 
@@ -417,6 +446,22 @@
         let isRunning = false;
         let simInterval;
         let droneGroup, props, led;
+
+        // Mobile Menu Toggle Logic
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const icon = document.getElementById('menu-icon');
+            
+            if (menu.classList.contains('open')) {
+                menu.classList.remove('open');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            } else {
+                menu.classList.add('open');
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            }
+        }
 
         // Navigation Logic
         function showSection(id) {
