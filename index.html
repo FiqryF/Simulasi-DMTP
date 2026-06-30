@@ -717,6 +717,9 @@
         let propSpeed = 0.2; // Idle speed
         let springOriginalH = 0.5;
         let initialIdleY = 0; // Store initial idle position
+        let airflowGroup, vibrationTrailGroup, basePulseMesh;
+        let airflowLines = [];
+        let vibrationTrailMat, basePulseMat;
 
         // Mobile Menu Toggle Logic
         function toggleMobileMenu() {
@@ -999,6 +1002,38 @@
             const led = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.04, 0.02), ledMaterial);
             led.position.set(0, 0, -0.15);
             droneGroup.add(led);
+
+            // Airflow/downwash guides under each propeller. They stay subtle at idle and grow during thrust.
+            airflowGroup = new THREE.Group();
+            airflowLines = [];
+            const airflowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0, depthWrite: false });
+            const rotorDistance = armLen - 0.1;
+            [Math.PI/4, -Math.PI/4, 3*Math.PI/4, -3*Math.PI/4].forEach((rotY, rotorIndex) => {
+                const baseX = Math.sin(rotY) * rotorDistance;
+                const baseZ = Math.cos(rotY) * rotorDistance;
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i / 4) * Math.PI * 2 + rotorIndex * 0.35;
+                    const offset = 0.09;
+                    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.75, 6), airflowMat.clone());
+                    line.position.set(baseX + Math.cos(angle) * offset, -0.45 - i * 0.12, baseZ + Math.sin(angle) * offset);
+                    line.userData = { baseY: line.position.y, phase: i * 0.45 + rotorIndex * 0.25 };
+                    airflowLines.push(line);
+                    airflowGroup.add(line);
+                }
+            });
+            droneGroup.add(airflowGroup);
+
+            // Failure vibration rings around the drone body. Hidden unless vibration is high.
+            vibrationTrailGroup = new THREE.Group();
+            vibrationTrailMat = new THREE.MeshBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.0, wireframe: true, depthWrite: false });
+            for (let i = 0; i < 3; i++) {
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36 + i * 0.08, 0.004, 8, 48), vibrationTrailMat.clone());
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = 0.01 + i * 0.02;
+                ring.userData = { phase: i * 0.8 };
+                vibrationTrailGroup.add(ring);
+            }
+            droneGroup.add(vibrationTrailGroup);
             sliderGroup.add(droneGroup);
 
             // --- INITIAL POSITION CALCULATION (FIXED) ---
@@ -1008,6 +1043,21 @@
             sliderGroup.position.y = currentY;
 
             scene.add(sliderGroup);
+
+            // Measurement ticks on one side of the rig for a more instrument-like test bench.
+            const tickMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.35 });
+            for (let i = 0; i < 8; i++) {
+                const tick = new THREE.Mesh(new THREE.BoxGeometry(i % 2 === 0 ? 0.18 : 0.11, 0.01, 0.012), tickMat);
+                tick.position.set(0.62, 0.62 + i * 0.28, 0.35);
+                standGroup.add(tick);
+            }
+
+            // Subtle base pulse that visualizes thrust loading without adding extra UI clutter.
+            basePulseMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false });
+            basePulseMesh = new THREE.Mesh(new THREE.RingGeometry(0.45, 1.1, 64), basePulseMat);
+            basePulseMesh.rotation.x = -Math.PI / 2;
+            basePulseMesh.position.y = 0.245;
+            standGroup.add(basePulseMesh);
 
             const gridHelper = new THREE.GridHelper(20, 20, 0x334155, 0x0f172a);
             scene.add(gridHelper);
@@ -1043,6 +1093,34 @@
                 } else if (droneGroup) {
                     droneGroup.position.x = 0;
                     droneGroup.rotation.z = 0;
+                }
+
+                const thrustVisual = Math.min(Math.max((propSpeed - 0.2) / 1.6, 0), 1);
+                springMesh.scale.y = 1 - thrustVisual * 0.22 + Math.sin(performance.now() * 0.018) * shakeIntensity * 0.2;
+                springMesh.material.color.setHex(thrustVisual > 0.65 ? 0x38bdf8 : 0x3b82f6);
+
+                if (airflowLines.length) {
+                    airflowLines.forEach((line, index) => {
+                        const flow = (performance.now() * 0.0015 + line.userData.phase) % 1;
+                        line.position.y = line.userData.baseY - flow * 0.55;
+                        line.scale.y = 0.5 + thrustVisual * 0.75;
+                        line.material.opacity = thrustVisual * (0.10 + (index % 4) * 0.035);
+                    });
+                }
+
+                if (basePulseMesh && basePulseMat) {
+                    const pulse = 1 + Math.sin(performance.now() * 0.004) * 0.05;
+                    basePulseMesh.scale.setScalar(0.88 + thrustVisual * 0.22 * pulse);
+                    basePulseMat.opacity = thrustVisual * 0.16;
+                }
+
+                if (vibrationTrailGroup) {
+                    const vibLevel = Math.min(shakeIntensity / 0.15, 1);
+                    vibrationTrailGroup.children.forEach((ring, i) => {
+                        const pulse = 1 + Math.sin(performance.now() * 0.008 + ring.userData.phase) * 0.06;
+                        ring.scale.setScalar(1 + vibLevel * (0.15 + i * 0.12) * pulse);
+                        ring.material.opacity = vibLevel * (0.18 - i * 0.035);
+                    });
                 }
                 
                 sliderGroup.position.x = 0;
