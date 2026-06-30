@@ -97,6 +97,14 @@
         .nav-link:hover::after, .nav-link.active::after { width: 100%; }
         .nav-link.active { color: #60a5fa; }
 
+        .floating-nav {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(100, 116, 139, 0.28);
+            border-radius: 1.5rem;
+            box-shadow: 0 18px 45px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.05);
+            backdrop-filter: blur(18px);
+        }
+
         #mobile-menu {
             transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
             max-height: 0;
@@ -120,21 +128,214 @@
             border: 1px solid rgba(51, 65, 85, 0.5); 
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
+
+        .telemetry-tile {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.72));
+            border: 1px solid rgba(100, 116, 139, 0.22);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 12px 24px rgba(0,0,0,0.18);
+        }
+
+        .telemetry-icon {
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(148, 163, 184, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .telemetry-label {
+            color: #94a3b8;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        @media (min-width: 768px) {
+            .telemetry-label {
+                font-size: 0.625rem;
+            }
+        }
+
+        .meter-track {
+            position: relative;
+            height: 0.375rem;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.95);
+        }
+
+        .meter-track::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            left: 72%;
+            background: rgba(226, 232, 240, 0.28);
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0;
+            border-radius: inherit;
+            transition: width 100ms linear;
+        }
+
+        .chart-panel {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.72));
+            border: 1px solid rgba(100, 116, 139, 0.24);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 36px rgba(0,0,0,0.2);
+        }
+
+        .chart-legend-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 999px;
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.08);
+        }
+
+        .chart-scale-pill {
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            background: rgba(15, 23, 42, 0.65);
+            color: #94a3b8;
+        }
+
+        .test-action {
+            min-height: 3.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+        }
+
+        .test-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .test-action-primary {
+            background: linear-gradient(180deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            box-shadow: 0 14px 28px rgba(37, 99, 235, 0.28);
+        }
+
+        .test-action-primary:hover {
+            border-color: rgba(147, 197, 253, 0.45);
+            box-shadow: 0 18px 34px rgba(37, 99, 235, 0.34);
+        }
+
+        .test-action-secondary {
+            background: rgba(30, 41, 59, 0.86);
+            color: #e2e8f0;
+        }
+
+        .test-action-secondary:hover {
+            background: rgba(51, 65, 85, 0.92);
+            border-color: rgba(248, 113, 113, 0.38);
+            color: #fecaca;
+        }
+
+        .log-panel {
+            background: linear-gradient(180deg, rgba(2, 6, 23, 0.76), rgba(2, 12, 24, 0.86));
+            border: 1px solid rgba(100, 116, 139, 0.22);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 14px 28px rgba(0,0,0,0.18);
+        }
+
+        .log-line {
+            display: flex;
+            gap: 0.65rem;
+            align-items: baseline;
+            padding: 0.1rem 0;
+            color: #7dd3fc;
+        }
+
+        .log-time {
+            color: #64748b;
+            flex: 0 0 auto;
+        }
         
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* REVISED TOAST POPUP STYLES */
+        /* RESULT TOAST */
         #result-toast {
             position: fixed;
             z-index: 100;
             opacity: 0;
-            /* Bounce effect transition */
-            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            pointer-events: none; /* Initially allow clicks through */
+            transition: all 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+            pointer-events: none;
             transform: translateY(20px) scale(0.9);
+        }
+
+        .result-toast-card {
+            width: min(92vw, 390px);
+            background: rgba(2, 6, 23, 0.94);
+            border: 1px solid rgba(100, 116, 139, 0.28);
+            border-radius: 1rem;
+            box-shadow: 0 22px 55px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(18px);
+        }
+
+        .result-toast-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0.25rem;
+            background: #38bdf8;
+        }
+
+        .result-toast-card.result-pass {
+            border-color: rgba(52, 211, 153, 0.34);
+        }
+
+        .result-toast-card.result-pass::before {
+            background: #34d399;
+        }
+
+        .result-toast-card.result-fail {
+            border-color: rgba(248, 113, 113, 0.34);
+        }
+
+        .result-toast-card.result-fail::before {
+            background: #f87171;
+        }
+
+        .result-toast-icon {
+            width: 2.65rem;
+            height: 2.65rem;
+            border-radius: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(15, 23, 42, 0.76);
+        }
+
+        .result-pass .result-toast-icon {
+            color: #34d399;
+            background: rgba(52, 211, 153, 0.1);
+            border-color: rgba(52, 211, 153, 0.26);
+        }
+
+        .result-fail .result-toast-icon {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.1);
+            border-color: rgba(248, 113, 113, 0.26);
         }
         
         /* Mobile Default: Top Center */
@@ -189,35 +390,37 @@
     </div>
 
     <!-- NAVIGATION BAR -->
-    <nav class="sticky top-0 z-50 glass-card border-b border-slate-700/50 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between relative z-50">
+    <nav class="sticky top-4 z-50 px-4 md:px-6">
+        <div class="floating-nav max-w-7xl mx-auto px-4 md:px-5 py-2.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 relative z-50">
             <!-- LOGO -->
-            <button onclick="showSection('home')" class="flex items-center gap-3 group hover:opacity-80 transition cursor-pointer">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">D</div>
-                <div class="flex flex-col items-start">
-                    <span class="text-lg font-bold tracking-tighter uppercase font-oswald leading-none">DMTP</span>
-                    <span class="text-[10px] tracking-[0.2em] text-blue-400 font-bold">FRAMEWORK</span>
+            <button onclick="showSection('home')" class="justify-self-start flex items-center gap-2.5 group hover:opacity-90 transition cursor-pointer min-w-0">
+                <div class="h-10 w-10 rounded-xl flex items-center justify-center shadow-md shadow-sky-950/30 ring-1 ring-sky-400/20 group-hover:scale-[1.03] transition-transform shrink-0 overflow-hidden">
+                    <img src="assets/dmtp-mark.svg" alt="Drone Manuver Tester Pad" class="h-full w-full object-contain">
+                </div>
+                <div class="flex flex-col items-start min-w-0">
+                    <span class="text-[13px] md:text-sm font-semibold tracking-normal leading-tight text-slate-50 truncate max-w-[155px] sm:max-w-[230px]">Drone Manuver Tester Pad</span>
+                    <span class="text-[9px] md:text-[10px] tracking-[0.14em] text-sky-400 font-bold leading-tight mt-0.5">IRC NG25</span>
                 </div>
             </button>
             
             <!-- DESKTOP MENU -->
-            <div class="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
+            <div class="hidden md:flex justify-self-center gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
                 <button onclick="showSection('home')" id="link-home" class="nav-link active hover:text-white transition-colors">Beranda</button>
                 <button onclick="showSection('sim')" id="link-sim" class="nav-link hover:text-white transition-colors">Simulasi Uji</button>
                 <button onclick="showSection('about')" id="link-about" class="nav-link hover:text-white transition-colors">Tentang</button>
             </div>
             
             <!-- Spacer for Desktop centering -->
-            <div class="hidden md:block w-10"></div> 
+            <div class="hidden md:block justify-self-end w-12"></div> 
 
             <!-- MOBILE HAMBURGER BUTTON -->
-            <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-300 hover:text-white focus:outline-none transition-colors">
+            <button onclick="toggleMobileMenu()" class="md:hidden justify-self-end p-2 text-slate-300 hover:text-white focus:outline-none transition-colors">
                 <i id="menu-icon" class="fas fa-bars text-xl"></i>
             </button>
         </div>
 
         <!-- MOBILE MENU DROPDOWN -->
-        <div id="mobile-menu" class="absolute top-full left-0 w-full bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 md:hidden z-40">
+        <div id="mobile-menu" class="absolute top-[calc(100%+0.5rem)] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl md:hidden z-40">
             <div class="flex flex-col p-6 gap-6 text-center">
                 <button onclick="showSection('home'); toggleMobileMenu()" class="text-sm font-bold uppercase tracking-widest text-slate-300 hover:text-white transition-colors py-2 border-b border-slate-800">Beranda</button>
                 <button onclick="showSection('sim'); toggleMobileMenu()" class="text-sm font-bold uppercase tracking-widest text-slate-300 hover:text-white transition-colors py-2 border-b border-slate-800">Simulasi Uji</button>
@@ -226,25 +429,22 @@
         </div>
     </nav>
 
-    <!-- NEW SYMMETRICAL RESULT TOAST -->
-    <div id="result-toast" class="flex flex-row items-center justify-center px-8 py-5 rounded-2xl border bg-slate-900/95 backdrop-blur-xl shadow-2xl min-w-[320px] max-w-sm gap-5 relative overflow-hidden group">
-        
-        <!-- Close Button (Absolute Top Right) -->
-        <button onclick="closeToast()" class="absolute top-2 right-2 text-slate-500 hover:text-white transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 z-20 cursor-pointer">
+    <!-- RESULT TOAST -->
+    <div id="result-toast" class="result-toast-card result-pass px-5 py-4 relative overflow-hidden">
+        <button onclick="closeToast()" class="absolute top-3 right-3 text-slate-500 hover:text-white transition-colors w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 z-20 cursor-pointer">
             <i class="fas fa-times text-xs"></i>
         </button>
 
-        <!-- Centered Content Wrapper for Symmetry -->
-        <div class="flex items-center gap-4 relative z-10">
-            <!-- Icon -->
-            <div id="toast-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-lg border shadow-inner shrink-0 relative z-10 transition-transform duration-500"></div>
-            
-            <!-- Text -->
-            <h3 id="toast-title" class="text-xl font-bold uppercase font-oswald tracking-tight leading-none relative z-10"></h3>
+        <div class="flex items-start gap-4 pr-7 relative z-10">
+            <div id="toast-icon" class="result-toast-icon">
+                <i class="fas fa-check text-base"></i>
+            </div>
+            <div class="min-w-0">
+                <div id="toast-kicker" class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.16em] mb-1">Hasil Pengujian</div>
+                <h3 id="toast-title" class="text-base font-semibold text-slate-50 leading-tight">Layak Terbang</h3>
+                <p id="toast-desc" class="text-xs text-slate-400 leading-relaxed mt-1">Parameter berada dalam batas aman.</p>
+            </div>
         </div>
-        
-        <!-- Decorative Glow (Optional) -->
-        <div id="toast-glow" class="absolute inset-0 opacity-20 blur-xl pointer-events-none z-0"></div>
     </div>
 
     <main class="flex-grow relative">
@@ -305,17 +505,7 @@
         </section>
 
         <!-- SECTION: SIMULATION (DASHBOARD) -->
-        <section id="section-sim" class="section-hidden py-6 md:py-10 px-4 md:px-8 max-w-[1400px] mx-auto">
-            <!-- Header Center Aligned -->
-            <div class="max-w-5xl mx-auto text-center mb-10">
-                <h2 class="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 leading-tight tracking-tighter font-oswald uppercase">
-                    Dashboard <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Pengujian</span>
-                </h2>
-                <p class="text-slate-400 text-xs md:text-sm tracking-[0.2em] uppercase font-bold">
-                    Live 3D Simulation Mode (Vertical Rig)
-                </p>
-            </div>
-
+        <section id="section-sim" class="section-hidden py-6 md:py-8 px-4 md:px-8 max-w-[1400px] mx-auto">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- VIEWPORT 3D -->
                 <div class="lg:col-span-8">
@@ -334,12 +524,13 @@
 
                     <!-- CONTROLS -->
                     <div class="grid grid-cols-2 gap-4 mt-6 relative z-20">
-                        <button type="button" onclick="runTest('normal')" class="relative overflow-hidden bg-blue-600 hover:bg-blue-500 py-3 md:py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest shadow-lg shadow-blue-500/20 group cursor-pointer">
-                            <span class="relative z-10 flex items-center gap-2"><i class="fas fa-play"></i> <span class="hidden sm:inline">Simulasi</span>Normal</span>
-                            <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+                        <button type="button" onclick="runTest('normal')" class="test-action test-action-primary cursor-pointer">
+                            <span class="w-7 h-7 rounded-lg bg-white/12 flex items-center justify-center"><i class="fas fa-play text-[11px]"></i></span>
+                            <span><span class="hidden sm:inline">Simulasi</span> Normal</span>
                         </button>
-                        <button type="button" onclick="runTest('fail')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-500/50 hover:text-red-400 py-3 md:py-4 rounded-xl font-bold transition flex items-center justify-center gap-3 uppercase text-xs tracking-widest group cursor-pointer">
-                            <i class="fas fa-bug group-hover:animate-bounce"></i> Simulasi Gagal
+                        <button type="button" onclick="runTest('fail')" class="test-action test-action-secondary cursor-pointer">
+                            <span class="w-7 h-7 rounded-lg bg-white/8 flex items-center justify-center"><i class="fas fa-triangle-exclamation text-[12px]"></i></span>
+                            <span>Simulasi Gagal</span>
                         </button>
                     </div>
                 </div>
@@ -347,55 +538,86 @@
                 <!-- TELEMETRY -->
                 <div class="lg:col-span-4 space-y-4 flex flex-col h-full">
                     <div class="grid grid-cols-3 gap-2 md:gap-4">
-                        <div class="glass-card p-3 md:p-4 rounded-2xl border-l-2 md:border-l-4 border-l-blue-500">
-                            <div class="flex flex-col justify-between items-start mb-1">
-                                <span class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Thrust</span>
+                        <div class="telemetry-tile p-3 md:p-4 rounded-lg">
+                            <div class="flex items-center justify-between gap-2 mb-4">
+                                <span class="telemetry-icon text-sky-300"><i class="fas fa-arrow-up text-xs"></i></span>
+                                <span class="telemetry-label">Thrust</span>
                             </div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="txt-thrust" class="text-lg md:text-2xl font-bold tracking-tighter text-white">0</span>
-                                <span class="text-slate-500 text-[8px] md:text-[10px] font-mono">g</span>
+                            <div class="flex items-end justify-between gap-1">
+                                <div class="flex items-baseline gap-1">
+                                    <span id="txt-thrust" class="text-2xl md:text-3xl font-semibold tracking-normal text-slate-50 leading-none">0</span>
+                                    <span class="text-slate-400 text-[10px] md:text-xs font-mono">g</span>
+                                </div>
+                                <span class="text-[9px] text-slate-500 font-mono mb-0.5">1500</span>
                             </div>
-                            <div class="w-full bg-slate-700/50 h-1 mt-1 rounded-full overflow-hidden">
-                                <div id="bar-thrust" class="h-full bg-blue-500 w-0 transition-all duration-100"></div>
-                            </div>
-                        </div>
-                        <div class="glass-card p-3 md:p-4 rounded-2xl border-l-2 md:border-l-4 border-l-purple-500">
-                            <div class="flex flex-col justify-between items-start mb-1">
-                                <span class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Vibration</span>
-                            </div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="txt-vib" class="text-lg md:text-2xl font-bold tracking-tighter text-white">0.0</span>
-                                <span class="text-slate-500 text-[8px] md:text-[10px] font-mono">RMS</span>
-                            </div>
-                            <div class="w-full bg-slate-700/50 h-1 mt-1 rounded-full overflow-hidden">
-                                <div id="bar-vib" class="h-full bg-purple-500 w-0 transition-all duration-100"></div>
+                            <div class="meter-track mt-3">
+                                <div id="bar-thrust" class="meter-fill bg-sky-400"></div>
                             </div>
                         </div>
-                        <div class="glass-card p-3 md:p-4 rounded-2xl border-l-2 md:border-l-4 border-l-emerald-500">
-                            <div class="flex flex-col justify-between items-start mb-1">
-                                <span class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Stable</span>
+                        <div class="telemetry-tile p-3 md:p-4 rounded-lg">
+                            <div class="flex items-center justify-between gap-2 mb-4">
+                                <span class="telemetry-icon text-amber-300"><i class="fas fa-wave-square text-xs"></i></span>
+                                <span class="telemetry-label">Vibration</span>
                             </div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="txt-stab" class="text-lg md:text-2xl font-bold tracking-tighter text-white">0.0</span>
-                                <span class="text-slate-500 text-[8px] md:text-[10px] font-mono">deg</span>
+                            <div class="flex items-end justify-between gap-1">
+                                <div class="flex items-baseline gap-1">
+                                    <span id="txt-vib" class="text-2xl md:text-3xl font-semibold tracking-normal text-slate-50 leading-none">0.0</span>
+                                    <span class="text-slate-400 text-[10px] md:text-xs font-mono">RMS</span>
+                                </div>
+                                <span class="text-[9px] text-slate-500 font-mono mb-0.5">5.0</span>
                             </div>
-                            <div class="w-full bg-slate-700/50 h-1 mt-1 rounded-full overflow-hidden">
-                                <div id="bar-stab" class="h-full bg-emerald-500 w-0 transition-all duration-100"></div>
+                            <div class="meter-track mt-3">
+                                <div id="bar-vib" class="meter-fill bg-amber-400"></div>
+                            </div>
+                        </div>
+                        <div class="telemetry-tile p-3 md:p-4 rounded-lg">
+                            <div class="flex items-center justify-between gap-2 mb-4">
+                                <span class="telemetry-icon text-emerald-300"><i class="fas fa-crosshairs text-xs"></i></span>
+                                <span class="telemetry-label">Stable</span>
+                            </div>
+                            <div class="flex items-end justify-between gap-1">
+                                <div class="flex items-baseline gap-1">
+                                    <span id="txt-stab" class="text-2xl md:text-3xl font-semibold tracking-normal text-slate-50 leading-none">0.0</span>
+                                    <span class="text-slate-400 text-[10px] md:text-xs font-mono">deg</span>
+                                </div>
+                                <span class="text-[9px] text-slate-500 font-mono mb-0.5">10</span>
+                            </div>
+                            <div class="meter-track mt-3">
+                                <div id="bar-stab" class="meter-fill bg-emerald-400"></div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="glass-card p-4 md:p-5 rounded-2xl flex-grow flex flex-col min-h-[200px]">
-                        <h4 class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Real-time Telemetry Analysis</h4>
-                        <div class="flex-grow relative w-full h-64 md:h-auto min-h-[200px]">
+                    <div class="chart-panel p-4 md:p-5 rounded-lg flex-grow flex flex-col min-h-[240px]">
+                        <div class="flex items-start justify-between gap-4 mb-5">
+                            <div>
+                                <h4 class="text-xs text-slate-200 font-semibold uppercase tracking-[0.12em]">Telemetry Trace</h4>
+                                <p class="text-[10px] text-slate-500 mt-1 font-mono">30 sample rolling window</p>
+                            </div>
+                            <div class="hidden sm:flex items-center gap-2 text-[10px] font-mono">
+                                <span class="chart-scale-pill px-2 py-1 rounded-md">L: thrust</span>
+                                <span class="chart-scale-pill px-2 py-1 rounded-md">R: vib/deg</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-[10px] text-slate-400">
+                            <span class="inline-flex items-center gap-2"><span class="chart-legend-dot bg-sky-400"></span>Thrust</span>
+                            <span class="inline-flex items-center gap-2"><span class="chart-legend-dot bg-amber-400"></span>Vibration</span>
+                            <span class="inline-flex items-center gap-2"><span class="chart-legend-dot bg-emerald-400"></span>Stability</span>
+                        </div>
+                        <div class="flex-grow relative w-full h-64 md:h-auto min-h-[220px]">
                             <canvas id="telemetryChart"></canvas>
                         </div>
                     </div>
                     
-                    <div class="bg-black/40 backdrop-blur border border-slate-800 p-4 rounded-2xl h-32 md:h-40 font-mono text-[10px] text-blue-400/80 overflow-y-auto custom-scroll shadow-inner" id="log-container">
-                        <div class="border-b border-slate-800/50 pb-1 mb-1 text-slate-500">System Log:</div>
-                        <div>> System initialized.</div>
-                        <div>> Vertical Test Rig calibrated.</div>
+                    <div class="log-panel p-4 rounded-lg h-36 md:h-44 font-mono text-[10px] overflow-y-auto custom-scroll" id="log-container">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-2 mb-2">
+                            <span class="text-slate-300 font-bold uppercase tracking-[0.16em]">Event Log</span>
+                            <span class="inline-flex items-center gap-1.5 text-[9px] text-emerald-300 uppercase tracking-[0.12em]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online
+                            </span>
+                        </div>
+                        <div class="log-line"><span class="log-time">BOOT</span><span>System initialized.</span></div>
+                        <div class="log-line"><span class="log-time">CAL</span><span>Vertical test rig calibrated.</span></div>
                     </div>
                 </div>
             </div>
@@ -467,7 +689,7 @@
     <footer class="border-t border-slate-800 mt-auto bg-slate-900/50 backdrop-blur-sm">
         <div class="max-w-7xl mx-auto py-8 px-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="text-center md:text-left">
-                <p class="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">© 2025 Universitas Logistik & Bisnis Internasional</p>
+                <p class="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">© 2025 Informatics Research Center NG25</p>
                 <p class="text-slate-600 text-[9px]">Program Studi DIV Teknik Informatika</p>
             </div>
             <div class="flex gap-4">
@@ -834,26 +1056,67 @@
 
         function initChart() {
             const ctx = document.getElementById('telemetryChart').getContext('2d');
+            const thrustFill = ctx.createLinearGradient(0, 0, 0, 260);
+            thrustFill.addColorStop(0, 'rgba(56, 189, 248, 0.20)');
+            thrustFill.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: Array(30).fill(''),
                     datasets: [
-                        { label: 'Thrust (g)', data: Array(30).fill(0), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)', yAxisID: 'y' },
-                        { label: 'Vibration (RMS)', data: Array(30).fill(0), borderColor: '#a855f7', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false, yAxisID: 'y1' },
-                        { label: 'Stability (°)', data: Array(30).fill(0), borderColor: '#10b981', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false, yAxisID: 'y1' }
+                        { label: 'Thrust (g)', data: Array(30).fill(0), borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0, tension: 0.32, fill: true, backgroundColor: thrustFill, yAxisID: 'y' },
+                        { label: 'Vibration (RMS)', data: Array(30).fill(0), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0, tension: 0.32, fill: false, yAxisID: 'y1' },
+                        { label: 'Stability (deg)', data: Array(30).fill(0), borderColor: '#34d399', borderWidth: 2, pointRadius: 0, tension: 0.32, fill: false, yAxisID: 'y1' }
                     ]
                 },
                 options: { 
-                    responsive: true, maintainAspectRatio: false, animation: false,
-                    layout: { padding: { top: 10, bottom: 0, left: 0, right: 0 } },
-                    plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 10, font: {size: 10} } } }, 
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    layout: { padding: { top: 4, bottom: 0, left: 0, right: 4 } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(2, 6, 23, 0.95)',
+                            borderColor: 'rgba(148, 163, 184, 0.22)',
+                            borderWidth: 1,
+                            titleColor: '#cbd5e1',
+                            bodyColor: '#e2e8f0',
+                            displayColors: true,
+                            padding: 10,
+                            callbacks: {
+                                title: () => 'Live sample'
+                            }
+                        }
+                    }, 
                     scales: { 
-                        y: { display: true, position: 'left', min: 0, suggestedMax: 1500, grid: { display: false } }, 
-                        y1: { display: true, position: 'right', min: 0, max: 15, grid: { display: false } }, // Max 15 fits both 0-5 RMS and 0-10 Deg
-                        x: { display: false } 
+                        y: {
+                            display: true,
+                            position: 'left',
+                            min: 0,
+                            max: 1600,
+                            ticks: { color: '#64748b', stepSize: 400, font: { size: 10, family: 'Inter' } },
+                            grid: { color: 'rgba(148, 163, 184, 0.08)', drawBorder: false },
+                            border: { display: false }
+                        }, 
+                        y1: {
+                            display: true,
+                            position: 'right',
+                            min: 0,
+                            max: 15,
+                            ticks: { color: '#64748b', stepSize: 5, font: { size: 10, family: 'Inter' } },
+                            grid: { drawOnChartArea: false, drawBorder: false },
+                            border: { display: false }
+                        },
+                        x: {
+                            display: true,
+                            ticks: { display: false },
+                            grid: { color: 'rgba(148, 163, 184, 0.05)', drawBorder: false },
+                            border: { display: false }
+                        } 
                     },
-                    elements: { line: { tension: 0.4 } }
+                    elements: { line: { borderCapStyle: 'round', borderJoinStyle: 'round' } }
                 }
             });
         }
@@ -862,8 +1125,14 @@
             const container = document.getElementById('log-container');
             const div = document.createElement('div');
             const time = new Date().toLocaleTimeString('id-ID', {hour12: false});
-            div.innerHTML = `<span class="opacity-50">[${time}]</span> ${msg}`;
-            container.prepend(div);
+            div.className = 'log-line';
+            div.innerHTML = `<span class="log-time">${time}</span><span>${msg}</span>`;
+            const header = container.querySelector('.border-b');
+            if (header && header.nextSibling) {
+                container.insertBefore(div, header.nextSibling);
+            } else {
+                container.prepend(div);
+            }
         }
 
         function runTest(mode) {
@@ -1015,38 +1284,30 @@
             const toast = document.getElementById('result-toast');
             const icon = document.getElementById('toast-icon');
             const title = document.getElementById('toast-title');
-            
-            // Note: We removed the 'desc' element for the thin/minimal version
-            
+            const desc = document.getElementById('toast-desc');
+            const kicker = document.getElementById('toast-kicker');
+
             toast.classList.remove('hide');
-            
-            // Allow browser reflow for animation
+            toast.classList.remove('result-pass', 'result-fail');
+
             setTimeout(() => {
                  toast.classList.add('show');
             }, 10);
             
             if(mode === 'normal') {
-                // Remove existing border colors to reset and apply new horizontal thin style
-                // Using flex-row, items-center, justify-between for the thin strip look
-                toast.className = "flex flex-row items-center justify-center px-8 py-5 rounded-2xl border border-green-500/30 bg-slate-900/95 backdrop-blur-xl shadow-[0_0_50px_rgba(34,197,94,0.2)] min-w-[320px] max-w-sm gap-5 relative overflow-hidden group transition-all duration-300 pointer-events-auto show";
-                
-                icon.className = "w-10 h-10 rounded-full flex items-center justify-center text-xl bg-green-500/10 text-green-500 border border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0 relative z-10";
-                icon.innerHTML = '<i class="fas fa-check"></i>';
-                
-                title.innerText = "LAYAK TERBANG";
-                title.className = "text-xl font-bold uppercase font-oswald tracking-tight text-green-400 whitespace-nowrap relative z-10";
-                
+                toast.classList.add('result-pass');
+                icon.innerHTML = '<i class="fas fa-check text-base"></i>';
+                kicker.innerText = "Hasil Pengujian";
+                title.innerText = "Layak Terbang";
+                desc.innerText = "Thrust, vibrasi, dan stabilitas berada dalam batas aman.";
             } else {
-                toast.className = "flex flex-row items-center justify-center px-8 py-5 rounded-2xl border border-red-500/30 bg-slate-900/95 backdrop-blur-xl shadow-[0_0_50px_rgba(239,68,68,0.2)] min-w-[320px] max-w-sm gap-5 relative overflow-hidden group transition-all duration-300 pointer-events-auto show";
-                
-                icon.className = "w-10 h-10 rounded-full flex items-center justify-center text-xl bg-red-500/10 text-red-500 border border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)] shrink-0 relative z-10";
-                icon.innerHTML = '<i class="fas fa-times"></i>';
-                
-                title.innerText = "TIDAK LAYAK TERBANG";
-                title.className = "text-xl font-bold uppercase font-oswald tracking-tight text-red-400 whitespace-nowrap relative z-10";
+                toast.classList.add('result-fail');
+                icon.innerHTML = '<i class="fas fa-triangle-exclamation text-base"></i>';
+                kicker.innerText = "Perlu Pemeriksaan";
+                title.innerText = "Tidak Layak Terbang";
+                desc.innerText = "Vibrasi atau stabilitas melewati batas uji. Lakukan inspeksi ulang.";
             }
 
-            // Auto dismiss after 8 seconds (sedikit lebih lama agar sempat baca/close)
             toastTimeout = setTimeout(() => {
                 closeToast();
             }, 8000);
